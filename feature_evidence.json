@@ -1,0 +1,25 @@
+{
+  "kind": "feature_evidence_report",
+  "features": [
+    {
+      "featureId": "feature-deploy-the-full-bhangar-wala-application-backend-motoko-canister-and-frontend-react-pwa-to-the-internet-computer-mainnet-so-the-app-is-publicly-accessible-via-a-live-ic-url",
+      "featureTitle": "Deploy the full Bhangar Wala application (backend Motoko canister and frontend React PWA) to the Internet Computer mainnet so the app is publicly accessible via a live IC URL.",
+      "files": [
+        "frontend/public/sw.js"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-35"
+      ],
+      "confidence": "high"
+    }
+  ]
+}

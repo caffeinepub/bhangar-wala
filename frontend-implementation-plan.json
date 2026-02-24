@@ -1,0 +1,65 @@
+{
+  "kind": "implementation_plan",
+  "version": "1.0",
+  "title": "Deploy Bhangar Wala to IC Mainnet",
+  "requirements": [
+    {
+      "id": "REQ-35",
+      "summary": "Configure frontend for mainnet deployment and ensure PWA assets are production-ready",
+      "acceptanceCriteria": [
+        "The backend Motoko canister is deployed to the IC mainnet and all existing API methods are callable.",
+        "The frontend React PWA is deployed to the IC mainnet and accessible via a public https://<canister-id>.icp0.io URL.",
+        "All existing features (auth, bookings, payments, notifications, etc.) function correctly on the live deployment.",
+        "The PWA manifest and service worker are served correctly on the live URL.",
+        "The app loads without errors on mobile browsers when accessed via the live URL."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/index.html",
+          "operation": "modify",
+          "description": "Verify meta tags, PWA manifest link, and icon references are correctly configured for production deployment. Ensure the manifest.json link path and apple-touch-icon are relative paths that will resolve correctly when served from the IC canister."
+        },
+        {
+          "path": "frontend/public/manifest.json",
+          "operation": "modify",
+          "description": "Verify the PWA manifest contains correct icon paths pointing to frontend/public/assets/generated/bhangar-wala-icon-192.dim_192x192.png and frontend/public/assets/generated/bhangar-wala-icon-512.dim_512x512.png. Ensure start_url, scope, and theme_color are production-ready. Confirm display mode is set to 'standalone' for native app-like experience."
+        },
+        {
+          "path": "frontend/public/sw.js",
+          "operation": "modify",
+          "description": "Review service worker cache configuration for production deployment. Ensure cache names include a version identifier for cache busting. Verify cache-first strategy for static assets includes all generated images under frontend/public/assets/generated/. Confirm network-first strategy correctly handles IC canister API calls. Add proper error handling for offline scenarios."
+        },
+        {
+          "path": "frontend/src/main.tsx",
+          "operation": "modify",
+          "description": "Verify service worker registration is enabled and functioning correctly for production. Ensure the service worker path resolves correctly when deployed to IC. Add console logging for service worker registration success/failure to aid in production debugging."
+        },
+        {
+          "path": "frontend/src/hooks/useActor.ts",
+          "operation": "modify",
+          "description": "Verify the canister ID configuration will correctly resolve to the mainnet canister after deployment. Ensure the actor creation logic handles mainnet-specific settings. Confirm the initialization check that sets the first admin works correctly on mainnet with Internet Identity authentication."
+        },
+        {
+          "path": "frontend/src/hooks/useInternetIdentity.ts",
+          "operation": "modify",
+          "description": "Verify Internet Identity configuration uses the correct mainnet identity provider URL (https://identity.ic0.app). Ensure the derivation origin is correctly set for mainnet. Confirm the authentication flow works with the production IC environment and that login/logout functionality clears all cached data properly."
+        },
+        {
+          "path": "frontend/src/pages/Splash.tsx",
+          "operation": "modify",
+          "description": "Verify the splash screen logo references the correct asset path frontend/public/assets/generated/logo.dim_256x256.png and that the loading animation displays correctly on the live deployment. Ensure the authentication check and redirect logic works properly with mainnet Internet Identity."
+        },
+        {
+          "path": "frontend/src/index.css",
+          "operation": "modify",
+          "description": "Review global styles, custom CSS properties, and design tokens to ensure they render correctly on the live IC deployment. Verify that all imported fonts load properly from their CDN sources. Confirm dark mode color tokens work as expected."
+        },
+        {
+          "path": "frontend/tailwind.config.js",
+          "operation": "modify",
+          "description": "Verify Tailwind configuration is optimized for production with proper purge/content settings to minimize CSS bundle size. Ensure custom colors using OKLCH, animations, and shadows are production-ready. Confirm the configuration doesn't reference any development-only settings."
+        }
+      ]
+    }
+  ]
+}

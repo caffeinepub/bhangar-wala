@@ -1,0 +1,41 @@
+{
+  "kind": "build_request",
+  "title": "Deploy app to mainnet (go live)",
+  "projectName": "Bhangar Wala",
+  "priority": "high",
+  "requirements": [
+    {
+      "id": "REQ-35",
+      "text": "Deploy the full Bhangar Wala application (backend Motoko canister and frontend React PWA) to the Internet Computer mainnet so the app is publicly accessible via a live IC URL.",
+      "target": "both",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "make it live"
+        ]
+      },
+      "acceptanceCriteria": [
+        "The backend Motoko canister is deployed to the IC mainnet and all existing API methods are callable.",
+        "The frontend React PWA is deployed to the IC mainnet and accessible via a public https://<canister-id>.icp0.io URL.",
+        "All existing features (auth, bookings, payments, notifications, etc.) function correctly on the live deployment.",
+        "The PWA manifest and service worker are served correctly on the live URL.",
+        "The app loads without errors on mobile browsers when accessed via the live URL."
+      ]
+    }
+  ],
+  "constraints": [
+    "Do not alter any existing feature logic or UI during deployment preparation.",
+    "Do not modify files under frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, or frontend/src/components/ui."
+  ],
+  "nonGoals": [
+    "Adding new features or screens.",
+    "Changing the visual design or theme.",
+    "Modifying backend data models or seeding additional data."
+  ],
+  "imageRequirements": {
+    "required": [],
+    "edits": []
+  }
+}

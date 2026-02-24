@@ -1,0 +1,419 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectStateVersion": 11,
+  "summary": "Bhangar wala is a PWA that connects households with scrap collection partners for doorstep pickup and instant payment. Built with React, Tailwind CSS, Vite, and Supabase. Features phone OTP auth, address management, scrap category selection, booking system, real-time tracking, dynamic pricing, UPI/cash payments, booking history, ratings, push notifications, and customer support. Mobile-first design with green/slate/amber palette.",
+  "architectural_notes": [
+    "Tech stack: React + Tailwind CSS + Vite (frontend), Supabase (auth, DB, storage, realtime)",
+    "External APIs: SMS Gateway (OTP), Google Maps (address/location), UPI/Razorpay (payments), Firebase Cloud Messaging (push notifications)",
+    "PWA with service workers for offline functionality",
+    "Color palette: Primary #16A34A (Green), Secondary #64748B (Slate), Accent #F59E0B (Amber)",
+    "Bottom nav: Home, Bookings, Profile, Support. Header has notifications icon and location indicator.",
+    "DB schema: Users, Addresses, ScrapCategories, ScrapRates, Bookings, BookingItems, Partners, Payments",
+    "Supabase realtime subscriptions used for order/tracking status updates",
+    "Mobile-first design, typography: Inter/Poppins headings, system fonts for body"
+  ],
+  "known_issues": [],
+  "isFixRequest": false,
+  "existing_features": [
+    {
+      "id": "feature-apply-a-mobile-first-eco-friendly-visual-theme-across-the-entire-app-using-primary-16a34a-green-secondary-64748b-slate-gray-and-accent-f59e0b-amber-use-inter-or-poppins-for-headings-and-system-fonts-for-body-text-all-screens-must-use-a-bottom-navigation-bar-home-bookings-profile-support-and-a-top-header-with-a-notification-bell-icon-and-location-indicator-design-must-be-optimized-for-touch-interactions-with-large-tap-targets",
+      "title": "Apply a mobile-first, eco-friendly visual theme across the entire app using Primary #16A34A (Green), Secondary #64748B (Slate Gray), and Accent #F59E0B (Amber). Use Inter or Poppins for headings and system fonts for body text. All screens must use a bottom navigation bar (Home, Bookings, Profile, Support) and a top header with a notification bell icon and location indicator. Design must be optimized for touch interactions with large tap targets.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-splash-screen-splash-displaying-the-app-logo-a-loading-progress-animation-and-version-info-after-a-brief-delay-auto-redirect-to-home-if-the-user-is-authenticated-has-a-session-in-local-storage-or-to-login-if-not",
+      "title": "Create a Splash screen (`/splash`) displaying the app logo, a loading/progress animation, and version info. After a brief delay, auto-redirect to `/home` if the user is authenticated (has a session in local storage), or to `/login` if not.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-login-screen-login-with-a-phone-number-input-field-country-code-selector-defaulting-to-91-an-send-otp-button-and-a-terms-conditions-checkbox-on-submitting-a-valid-phone-number-navigate-to-otp-verification-and-store-the-phone-number-in-component-state",
+      "title": "Create a Login screen (`/login`) with a phone number input field, country code selector defaulting to +91, an 'Send OTP' button, and a terms & conditions checkbox. On submitting a valid phone number, navigate to `/otp-verification` and store the phone number in component state.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-an-otp-verification-screen-otp-verification-with-6-individual-digit-input-boxes-a-60-second-countdown-timer-a-resend-otp-button-enabled-only-after-timer-expires-and-a-verify-button-on-successful-verification-simulated-accept-any-6-digit-code-navigate-first-time-users-to-profile-setup-and-returning-users-to-home-store-auth-session-in-localstorage",
+      "title": "Create an OTP Verification screen (`/otp-verification`) with 6 individual digit input boxes, a 60-second countdown timer, a 'Resend OTP' button (enabled only after timer expires), and a 'Verify' button. On successful verification (simulated: accept any 6-digit code), navigate first-time users to `/profile-setup` and returning users to `/home`. Store auth session in localStorage.",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-profile-setup-screen-profile-setup-for-first-time-users-with-a-name-text-input-a-profile-picture-upload-picker-and-an-address-form-street-city-pincode-fields-include-a-save-continue-button-that-saves-the-profile-to-backend-and-navigates-to-home",
+      "title": "Create a Profile Setup screen (`/profile-setup`) for first-time users with: a name text input, a profile picture upload/picker, and an address form (street, city, pincode fields). Include a 'Save & Continue' button that saves the profile to backend and navigates to `/home`.",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-the-home-dashboard-screen-home-showing-a-welcome-message-with-the-user-s-name-a-prominent-book-pickup-cta-button-a-grid-of-scrap-category-cards-icon-name-and-a-recent-bookings-section-showing-up-to-3-latest-bookings-with-status-badges-tapping-book-pickup-navigates-to-book-pickup-tapping-a-recent-booking-navigates-to-booking-details-id",
+      "title": "Create the Home dashboard screen (`/home`) showing: a welcome message with the user's name, a prominent 'Book Pickup' CTA button, a grid of scrap category cards (icon + name), and a 'Recent Bookings' section showing up to 3 latest bookings with status badges. Tapping 'Book Pickup' navigates to `/book-pickup`; tapping a recent booking navigates to `/booking-details/:id`.",
+      "reqIds": [
+        "REQ-7"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-the-book-pickup-screen-book-pickup-as-a-multi-step-form-with-step-1-address-selector-list-of-saved-addresses-with-option-to-add-new-step-2-scrap-type-selector-category-subcategory-and-weight-input-in-kg-step-3-date-and-time-slot-picker-show-next-7-days-4-time-slots-per-day-9-11am-11am-1pm-2-4pm-4-6pm-step-4-price-estimate-display-rate-estimated-weight-with-itemized-breakdown-a-confirm-booking-button-creates-the-booking-in-the-backend-and-navigates-to-booking-confirmation",
+      "title": "Create the Book Pickup screen (`/book-pickup`) as a multi-step form with: Step 1 — Address selector (list of saved addresses with option to add new); Step 2 — Scrap type selector (category + subcategory) and weight input in kg; Step 3 — Date and time slot picker (show next 7 days, 4 time slots per day: 9–11am, 11am–1pm, 2–4pm, 4–6pm); Step 4 — Price estimate display (rate × estimated weight) with itemized breakdown. A 'Confirm Booking' button creates the booking in the backend and navigates to `/booking-confirmation`.",
+      "reqIds": [
+        "REQ-8"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-the-booking-confirmation-screen-booking-confirmation-showing-booking-id-selected-address-scrap-category-and-weight-scheduled-date-and-time-estimated-price-and-a-simulated-assigned-partner-card-name-vehicle-type-star-rating-contact-button-include-a-track-pickup-button-navigating-to-track-pickup-and-a-cancel-booking-button-that-updates-the-booking-status-to-cancelled-and-navigates-to-home",
+      "title": "Create the Booking Confirmation screen (`/booking-confirmation`) showing: booking ID, selected address, scrap category and weight, scheduled date and time, estimated price, and a simulated assigned partner card (name, vehicle type, star rating, contact button). Include a 'Track Pickup' button navigating to `/track-pickup` and a 'Cancel Booking' button that updates the booking status to 'cancelled' and navigates to `/home`.",
+      "reqIds": [
+        "REQ-9"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-the-track-pickup-screen-track-pickup-showing-a-simulated-map-area-static-illustrated-map-placeholder-since-live-gps-is-not-supported-partner-details-card-a-booking-status-timeline-booked-partner-assigned-on-the-way-arrived-completed-and-contact-buttons-call-whatsapp-as-tel-and-wa-me-links-include-a-floating-cancel-button-visible-until-status-is-arrived",
+      "title": "Create the Track Pickup screen (`/track-pickup`) showing a simulated map area (static illustrated map placeholder since live GPS is not supported), partner details card, a booking status timeline (Booked → Partner Assigned → On the Way → Arrived → Completed), and contact buttons (Call, WhatsApp as tel: and wa.me links). Include a floating 'Cancel' button visible until status is 'Arrived'.",
+      "reqIds": [
+        "REQ-10"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-the-payment-screen-payment-showing-final-weight-input-editable-pre-filled-with-estimated-weight-itemized-price-breakdown-category-final-weight-rate-total-amount-payment-method-selection-cash-or-upi-and-a-confirm-payment-button-on-confirmation-create-a-payment-record-in-the-backend-with-status-completed-and-navigate-to-payment-success",
+      "title": "Create the Payment screen (`/payment`) showing: final weight input (editable, pre-filled with estimated weight), itemized price breakdown (category × final weight × rate), total amount, payment method selection (Cash or UPI), and a 'Confirm Payment' button. On confirmation, create a Payment record in the backend with status 'completed' and navigate to `/payment-success`.",
+      "reqIds": [
+        "REQ-11"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-the-payment-success-screen-payment-success-with-a-success-animation-animated-green-checkmark-a-receipt-card-showing-booking-id-scrap-details-final-weight-total-amount-paid-and-payment-method-include-a-download-receipt-button-triggers-browser-print-a-rate-service-button-navigating-to-rate-service-and-a-back-to-home-button",
+      "title": "Create the Payment Success screen (`/payment-success`) with a success animation (animated green checkmark), a receipt card showing booking ID, scrap details, final weight, total amount paid, and payment method. Include a 'Download Receipt' button (triggers browser print), a 'Rate Service' button navigating to `/rate-service`, and a 'Back to Home' button.",
+      "reqIds": [
+        "REQ-12"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-the-rate-service-screen-rate-service-with-an-interactive-5-star-rating-component-an-optional-text-comment-box-a-submit-rating-button-and-a-skip-button-on-submission-save-the-rating-to-the-backend-and-navigate-to-home",
+      "title": "Create the Rate Service screen (`/rate-service`) with an interactive 5-star rating component, an optional text comment box, a 'Submit Rating' button, and a 'Skip' button. On submission, save the rating to the backend and navigate to `/home`.",
+      "reqIds": [
+        "REQ-13"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-the-bookings-history-screen-bookings-showing-a-list-of-all-user-bookings-sorted-by-date-descending-with-filter-chips-all-pending-completed-cancelled-and-a-search-bar-filtering-by-booking-id-or-address-each-list-item-shows-booking-id-date-scrap-category-amount-and-a-colored-status-badge-tapping-an-item-navigates-to-booking-details-id",
+      "title": "Create the Bookings history screen (`/bookings`) showing a list of all user bookings sorted by date descending, with filter chips (All, Pending, Completed, Cancelled) and a search bar filtering by booking ID or address. Each list item shows booking ID, date, scrap category, amount, and a colored status badge. Tapping an item navigates to `/booking-details/:id`.",
+      "reqIds": [
+        "REQ-14"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-the-booking-details-screen-booking-details-id-showing-complete-booking-information-booking-id-status-scheduled-time-address-scrap-items-with-weights-and-rates-partner-info-payment-details-and-a-receipt-summary-include-a-contact-support-button-and-a-back-button-to-bookings",
+      "title": "Create the Booking Details screen (`/booking-details/:id`) showing complete booking information: booking ID, status, scheduled time, address, scrap items with weights and rates, partner info, payment details, and a receipt summary. Include a 'Contact Support' button and a back button to `/bookings`.",
+      "reqIds": [
+        "REQ-15"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-the-profile-screen-profile-showing-the-user-s-avatar-name-and-phone-number-with-list-items-navigating-to-edit-profile-name-photo-edit-form-manage-addresses-addresses-and-app-settings-toggle-switches-for-notification-preferences-dark-mode-placeholder-include-a-logout-button-that-clears-localstorage-and-redirects-to-login",
+      "title": "Create the Profile screen (`/profile`) showing the user's avatar, name, and phone number, with list items navigating to: Edit Profile (name/photo edit form), Manage Addresses (`/addresses`), and App Settings (toggle switches for: notification preferences, dark mode placeholder). Include a 'Logout' button that clears localStorage and redirects to `/login`.",
+      "reqIds": [
+        "REQ-16"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-the-addresses-screen-addresses-showing-all-saved-addresses-as-cards-with-label-street-city-and-pincode-each-card-has-edit-and-delete-action-buttons-a-floating-button-navigates-to-add-address-deleting-an-address-removes-it-from-the-backend",
+      "title": "Create the Addresses screen (`/addresses`) showing all saved addresses as cards with label, street, city, and pincode. Each card has Edit and Delete action buttons. A floating '+' button navigates to `/add-address`. Deleting an address removes it from the backend.",
+      "reqIds": [
+        "REQ-17"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-add-address-add-address-and-edit-address-edit-address-id-screens-with-form-fields-address-label-home-work-other-street-address-city-pincode-and-optional-latitude-longitude-inputs-a-save-button-creates-or-updates-the-address-in-the-backend-and-navigates-back-to-addresses",
+      "title": "Create Add Address (`/add-address`) and Edit Address (`/edit-address/:id`) screens with form fields: address label (Home/Work/Other), street address, city, pincode, and optional latitude/longitude inputs. A 'Save' button creates or updates the address in the backend and navigates back to `/addresses`.",
+      "reqIds": [
+        "REQ-18"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-the-support-screen-support-with-an-expandable-faq-accordion-section-at-least-6-hardcoded-faqs-about-scrap-pickup-pricing-cancellation-and-payment-a-call-support-button-tel-link-a-whatsapp-button-wa-me-link-and-an-email-support-button-mailto-link-include-a-simple-in-app-support-ticket-form-subject-message-submit-that-saves-the-message-to-the-backend",
+      "title": "Create the Support screen (`/support`) with: an expandable FAQ accordion section (at least 6 hardcoded FAQs about scrap pickup, pricing, cancellation, and payment), a 'Call Support' button (tel: link), a 'WhatsApp' button (wa.me: link), and an email support button (mailto: link). Include a simple in-app support ticket form (subject + message + submit) that saves the message to the backend.",
+      "reqIds": [
+        "REQ-19"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-the-notifications-screen-notifications-showing-a-list-of-in-app-notifications-simulated-booking-confirmed-partner-assigned-partner-on-the-way-payment-received-stored-in-the-backend-per-user-each-notification-shows-an-icon-title-message-and-timestamp-include-mark-all-as-read-and-clear-all-buttons-the-notification-bell-in-the-top-header-shows-an-unread-count-badge",
+      "title": "Create the Notifications screen (`/notifications`) showing a list of in-app notifications (simulated: booking confirmed, partner assigned, partner on the way, payment received) stored in the backend per user. Each notification shows an icon, title, message, and timestamp. Include 'Mark All as Read' and 'Clear All' buttons. The notification bell in the top header shows an unread count badge.",
+      "reqIds": [
+        "REQ-20"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-booking-confirmation-screen-booking-confirmation-to-fetch-the-assigned-partner-details-from-the-backend-using-the-partnerid-on-the-booking-record-replacing-the-current-simulated-static-partner-card-with-live-data-showing-the-partner-s-name-vehicle-type-and-star-rating",
+      "title": "Update the Booking Confirmation screen (`/booking-confirmation`) to fetch the assigned partner details from the backend using the partnerId on the booking record, replacing the current simulated static partner card with live data showing the partner's name, vehicle type, and star rating.",
+      "reqIds": [
+        "REQ-23"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-track-pickup-screen-track-pickup-to-display-the-assigned-partner-s-real-name-phone-and-vehicle-type-fetched-from-the-backend-booking-record-replacing-the-static-simulated-partner-card",
+      "title": "Update the Track Pickup screen (`/track-pickup`) to display the assigned partner's real name, phone, and vehicle type fetched from the backend booking record, replacing the static simulated partner card.",
+      "reqIds": [
+        "REQ-24"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-on-the-track-pickup-screen-track-pickup-add-a-dev-demo-simulate-status-button-visible-only-in-development-or-as-a-small-inconspicuous-control-that-cycles-the-booking-status-through-the-progression-confirmed-partner-assigned-on-the-way-arrived-completed-each-tap-advances-to-the-next-status-by-calling-the-updatebookingstatus-backend-method-and-refetches-the-booking-to-reflect-the-updated-status-stepper",
+      "title": "On the Track Pickup screen (`/track-pickup`), add a dev/demo 'Simulate Status' button (visible only in development or as a small inconspicuous control) that cycles the booking status through the progression: confirmed → partner_assigned → on_the_way → arrived → completed. Each tap advances to the next status by calling the updateBookingStatus backend method and refetches the booking to reflect the updated status stepper.",
+      "reqIds": [
+        "REQ-26"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-visible-helper-hint-on-the-otp-verification-screen-otp-verification-that-reads-enter-any-6-digit-code-to-verify-displayed-below-the-digit-input-boxes-styled-as-a-small-muted-informational-note-so-users-understand-no-real-sms-is-sent",
+      "title": "Add a visible helper hint on the OTP Verification screen (`/otp-verification`) that reads 'Enter any 6-digit code to verify' displayed below the digit input boxes, styled as a small muted informational note, so users understand no real SMS is sent.",
+      "reqIds": [
+        "REQ-27"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-build-a-partner-panel-screen-partner-panel-accessible-via-a-direct-url-no-bottom-nav-link-required-for-regular-users-the-panel-shows-a-list-of-bookings-assigned-to-the-logged-in-partner-filter-by-partnerid-each-booking-card-shows-booking-id-customer-address-scrap-category-scheduled-time-and-current-status-include-an-accept-button-sets-status-to-partner-assigned-and-a-update-status-button-that-advances-the-booking-through-on-the-way-arrived-completed-the-partner-is-identified-by-matching-their-phone-number-stored-in-localstorage-against-the-partners-table",
+      "title": "Build a Partner Panel screen (`/partner-panel`) accessible via a direct URL (no bottom nav link required for regular users). The panel shows a list of bookings assigned to the logged-in partner (filter by partnerId). Each booking card shows booking ID, customer address, scrap category, scheduled time, and current status. Include an 'Accept' button (sets status to `partner_assigned`) and a 'Update Status' button that advances the booking through `on_the_way → arrived → completed`. The partner is identified by matching their phone number stored in localStorage against the Partners table.",
+      "reqIds": [
+        "REQ-28"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-on-the-payment-screen-payment-when-the-user-selects-upi-as-the-payment-method-display-a-upi-qr-code-image-placeholder-a-styled-box-showing-a-mock-qr-code-svg-or-generated-image-with-the-upi-id-bhangarwala-upi-and-the-total-amount-include-a-copy-upi-id-button-that-copies-the-upi-id-to-clipboard",
+      "title": "On the Payment screen (`/payment`), when the user selects UPI as the payment method, display a UPI QR code image placeholder (a styled box showing a mock QR code SVG or generated image) with the UPI ID `bhangarwala@upi` and the total amount. Include a 'Copy UPI ID' button that copies the UPI ID to clipboard.",
+      "reqIds": [
+        "REQ-29"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-polish-the-receipt-on-the-payment-success-screen-payment-success-for-professional-printing-add-the-app-logo-name-at-the-top-of-the-receipt-card-include-a-horizontal-rule-dividing-header-from-body-add-a-receipt-no-derived-from-the-payment-id-show-the-payment-date-time-list-each-scrap-item-with-category-final-weight-rate-per-kg-and-line-total-show-a-grand-total-row-with-bold-styling-and-add-a-footer-with-thank-you-for-using-bhangar-wala-text-when-the-download-receipt-button-is-tapped-trigger-window-print-and-include-a-media-print-css-block-that-hides-all-page-elements-except-the-receipt-card",
+      "title": "Polish the receipt on the Payment Success screen (`/payment-success`) for professional printing: add the app logo/name at the top of the receipt card, include a horizontal rule dividing header from body, add a 'Receipt No.' derived from the payment ID, show the payment date/time, list each scrap item with category, final weight, rate per kg, and line total, show a grand total row with bold styling, and add a footer with 'Thank you for using Bhangar Wala' text. When the 'Download Receipt' button is tapped, trigger `window.print()` and include a `@media print` CSS block that hides all page elements except the receipt card.",
+      "reqIds": [
+        "REQ-30"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-build-an-admin-scrap-rates-screen-admin-rates-accessible-via-direct-url-it-displays-a-table-of-all-scrap-categories-with-their-current-rate-per-kg-fetched-via-getscraprateswithcategories-each-row-has-an-inline-editable-price-field-and-a-save-button-that-calls-updatescraprate-include-a-page-header-scrap-rate-management-and-a-note-changes-apply-immediately-to-all-new-bookings",
+      "title": "Build an Admin — Scrap Rates screen (`/admin/rates`) accessible via direct URL. It displays a table of all scrap categories with their current rate per kg (fetched via `getScrapRatesWithCategories`). Each row has an inline editable price field and a 'Save' button that calls `updateScrapRate`. Include a page header 'Scrap Rate Management' and a note 'Changes apply immediately to all new bookings'.",
+      "reqIds": [
+        "REQ-32"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-pwa-support-to-the-frontend-create-a-frontend-public-manifest-json-with-app-name-bhangar-wala-short-name-bhangarwala-theme-color-16a34a-background-color-ffffff-display-mode-standalone-start-url-and-icon-entries-for-192-192-and-512-512-png-icons-register-a-service-worker-frontend-public-sw-js-that-caches-the-app-shell-html-css-js-using-a-cache-first-strategy-for-static-assets-and-a-network-first-strategy-for-api-calls-link-the-manifest-in-frontend-index-html-generate-the-required-pwa-icon-images",
+      "title": "Add PWA support to the frontend: create a `frontend/public/manifest.json` with app name 'Bhangar Wala', short name 'BhangarWala', theme color `#16A34A`, background color `#ffffff`, display mode `standalone`, start URL `/`, and icon entries for 192×192 and 512×512 PNG icons. Register a service worker (`frontend/public/sw.js`) that caches the app shell (HTML, CSS, JS) using a cache-first strategy for static assets and a network-first strategy for API calls. Link the manifest in `frontend/index.html`. Generate the required PWA icon images.",
+      "reqIds": [
+        "REQ-33"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-render-the-generated-pwa-and-app-icons-bhangar-wala-icon-192-dim-192x192-png-and-bhangar-wala-icon-512-dim-512x512-png-as-static-assets-in-frontend-public-assets-generated-and-reference-them-correctly-in-frontend-public-manifest-json-icon-entries-and-frontend-index-html-apple-touch-icon-link",
+      "title": "Render the generated PWA and app icons (bhangar-wala-icon-192.dim_192x192.png and bhangar-wala-icon-512.dim_512x512.png) as static assets in frontend/public/assets/generated and reference them correctly in frontend/public/manifest.json icon entries and frontend/index.html apple-touch-icon link.",
+      "reqIds": [
+        "REQ-34"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-deploy-the-full-bhangar-wala-application-backend-motoko-canister-and-frontend-react-pwa-to-the-internet-computer-mainnet-so-the-app-is-publicly-accessible-via-a-live-ic-url",
+      "title": "Deploy the full Bhangar Wala application (backend Motoko canister and frontend React PWA) to the Internet Computer mainnet so the app is publicly accessible via a live IC URL.",
+      "reqIds": [
+        "REQ-35"
+      ],
+      "version": 1
+    }
+  ],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Mobile OTP authentication with phone number login",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Address management - add, edit, select pickup addresses with map picker",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Scrap category selection (metal, paper, plastic, electronics, etc.) with weight estimation",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Booking system with date/time slot scheduling and price estimation",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Real-time pickup partner tracking with live map and status updates",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Dynamic pricing based on scrap type and weight",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-7",
+      "summary": "Payment integration - cash and UPI payment processing with receipt",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-8",
+      "summary": "Booking history with filters, search, and detailed booking view",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-9",
+      "summary": "Rating and reviews for pickup partners after service completion",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-10",
+      "summary": "Push notifications for booking status updates via Firebase Cloud Messaging",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-11",
+      "summary": "Customer support screen with FAQ, in-app chat, and helpline",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-12",
+      "summary": "Profile management with user info, saved addresses, and settings",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-13",
+      "summary": "Splash screen with auth-based redirect and PWA service worker offline support",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-14",
+      "summary": "Notifications screen with mark-as-read and clear-all functionality",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-20",
+      "summary": "Implement the backend data model in Motoko with the following entities and CRUD operations: Users (id, phone, name, profileImage), Addresses (id, userId, label, street, city, pincode, lat, lng), ScrapCategories (id, name, parentId, unit), ScrapRates (id, categoryId, pricePerKg), Bookings (id, userId, addressId, status, scheduledTime, partnerId, totalEstimatedAmount, totalFinalAmount), BookingItems (id, bookingId, categoryId, estimatedWeight, finalWeight), Partners (id, name, phone, vehicle, rating, active), Payments (id, bookingId, amount, method, status, transactionId), and Ratings (id, bookingId, userId, partnerId, stars, comment). Seed the ScrapCategories and ScrapRates tables with at least: Paper/Newspaper ₹12/kg, Paper/Cardboard ₹8/kg, Metal/Iron ₹30/kg, Metal/Copper ₹450/kg, Plastic/PET Bottles ₹15/kg, Plastic/Hard Plastic ₹10/kg, Electronics/Mobile ₹50/kg, Electronics/Laptop ₹100/kg.",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-21",
+      "summary": "Add a backend function to automatically assign an available partner to a booking when it is created or confirmed. The function should select a random active partner from the Partners collection and update the booking's partnerId field. Expose this as a callable update method on the main actor.",
+      "reqIds": [
+        "REQ-21"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-22",
+      "summary": "Seed the Partners table in the backend with at least 5 sample partners, each with a name, phone number, vehicle type (e.g., Mini Truck, Tempo, Cycle Cart), star rating (between 3.5 and 5.0), and active status set to true.",
+      "reqIds": [
+        "REQ-22"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-25",
+      "summary": "Add a backend function to simulate booking status progression. Expose an `updateBookingStatus` update method that accepts a bookingId and a new status (one of: pending, confirmed, partner_assigned, on_the_way, arrived, completed, cancelled) and updates the booking record accordingly. Add automatic notification creation when status changes to partner_assigned, on_the_way, arrived, and completed.",
+      "reqIds": [
+        "REQ-25"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-26",
+      "summary": "Add visible 'Enter any 6-digit code' helper hint on the OTP screen for simulated auth",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-27",
+      "summary": "Build a partner panel (admin view) where pickup partners can see assigned bookings, accept them, and update status",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-28",
+      "summary": "Add UPI QR code display on payment screen and polish receipt for professional printing",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-29",
+      "summary": "Add admin page to manage/update scrap rates (price per kg) without touching code",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-30",
+      "summary": "Add PWA service worker and manifest file so users can install the app on their phone's home screen",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-35",
+      "summary": "Add a backend `updateScrapRate` update method that accepts a categoryId and a new pricePerKg (Float) and updates the corresponding ScrapRate record. Add a `getScrapRatesWithCategories` query method that returns all scrap rates joined with their category names.",
+      "reqIds": [
+        "REQ-31"
+      ],
+      "status": "pending"
+    }
+  ],
+  "gameProjectType": "none",
+  "projectName": "Bhangar wala",
+  "clarification_mode": "instant",
+  "clarification_rounds": 0
+}

@@ -1,0 +1,54 @@
+{
+  "kind": "spec_vs_diff_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-24T14:33:29.431Z",
+  "summary": "The diff shows modifications to backend/main.mo (Motoko canister code), frontend page/component files (via frontend-file-summaries.txt), frontend/public/sw.js (service worker), and project_state.json. These changes appear to be feature/bug-fix work rather than mainnet deployment configuration. There is no evidence of deployment configuration files (dfx.json mainnet network settings, canister IDs for mainnet, deploy scripts, CI/CD pipeline changes, or any ic-deployment artifacts) being added or modified. The service worker update (sw.js) partially addresses the PWA manifest/service worker requirement, but the core deployment infrastructure changes are absent.",
+  "missing_requirements": [
+    {
+      "id": "REQ-35",
+      "requirement": "Deploy the backend Motoko canister to the IC mainnet so all existing API methods are callable.",
+      "reason": "No dfx.json mainnet network configuration, canister_ids.json, deploy scripts, or CI/CD pipeline changes targeting mainnet are present in the diff. backend/main.mo was modified but no deployment artifacts or configuration targeting mainnet were added.",
+      "evidence": [
+        "backend/main.mo"
+      ]
+    },
+    {
+      "id": "REQ-35",
+      "requirement": "Deploy the frontend React PWA to the IC mainnet and make it accessible via a public https://<canister-id>.icp0.io URL.",
+      "reason": "No dfx.json frontend canister configuration for mainnet, no canister_ids.json, no build/deploy scripts targeting IC mainnet, and no evidence of frontend asset canister deployment setup are present in the diff.",
+      "evidence": [
+        "frontend-file-summaries.txt"
+      ]
+    }
+  ],
+  "hallucinated_features": [
+    {
+      "description": "New /partner-panel (PartnerPanel) and /admin/rates (AdminRates) routes added to the frontend router.",
+      "reason": "The build request explicitly states non-goals include adding new features or screens. These two new routes and their associated pages were not requested.",
+      "evidence": [
+        "frontend-file-summaries.txt"
+      ]
+    },
+    {
+      "description": "UPI QR code section added to the Payment screen showing QR image, UPI ID bhangarwala@upi, total amount, and Copy UPI ID button.",
+      "reason": "The build request prohibits adding new features or changing existing feature logic. This is a new UI feature not requested in REQ-35.",
+      "evidence": [
+        "frontend-file-summaries.txt"
+      ]
+    },
+    {
+      "description": "Enhanced PaymentSuccess screen with polished receipt card, line-items table, Download Receipt via window.print(), and no-print CSS class.",
+      "reason": "This is a new feature enhancement not requested in REQ-35 and violates the constraint against altering existing feature logic or UI.",
+      "evidence": [
+        "frontend-file-summaries.txt"
+      ]
+    }
+  ],
+  "confidence": 0.82,
+  "changed_files": [
+    "backend/main.mo",
+    "frontend-file-summaries.txt",
+    "frontend/public/sw.js",
+    "project_state.json"
+  ]
+}
