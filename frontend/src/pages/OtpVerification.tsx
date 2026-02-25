@@ -68,11 +68,11 @@ export default function OtpVerification() {
       };
       localStorage.setItem('auth_session', JSON.stringify(session));
 
-      // Check if user has a profile
+      // Check if user has a profile by looking up their phone number
       let hasProfile = false;
-      if (actor) {
+      if (actor && phone) {
         try {
-          const profile = await actor.getCallerUserProfile();
+          const profile = await actor.getUserProfileById(phone);
           hasProfile = profile !== null;
         } catch {
           hasProfile = false;

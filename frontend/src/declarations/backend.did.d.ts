@@ -10,6 +10,30 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export interface Address {
+  'id' : bigint,
+  'lat' : [] | [number],
+  'lng' : [] | [number],
+  'street' : string,
+  'city' : string,
+  'addressLabel' : [] | [string],
+  'pincode' : string,
+}
+export interface BookingItemRequest {
+  'categoryId' : bigint,
+  'estimatedWeight' : number,
+}
+export interface BookingRequest {
+  'scheduledTime' : bigint,
+  'address' : Address,
+  'items' : Array<BookingItemRequest>,
+  'totalEstimatedAmount' : number,
+}
+export interface BookingResponse {
+  'bookingId' : bigint,
+  'partnerId' : [] | [bigint],
+  'estimatedAmount' : number,
+}
 export type BookingStatus = { 'on_the_way' : null } |
   { 'cancelled' : null } |
   { 'pending' : null } |
@@ -41,11 +65,18 @@ export interface ScrapShop {
 export type ScrapShopStatus = { 'pending' : null } |
   { 'approved' : null } |
   { 'rejected' : null };
+export type ServiceError = { 'invalidWeight' : number } |
+  { 'invalidAddress' : null } |
+  { 'unauthorized' : null } |
+  { 'missingItems' : null } |
+  { 'backendError' : string } |
+  { 'invalidCategory' : bigint };
 export interface UserProfile {
-  'id' : Principal,
-  'profileImage' : string,
+  'profileImage' : [] | [string],
   'name' : string,
-  'phone' : string,
+  'email' : [] | [string],
+  'addresses' : Array<Address>,
+  'phoneNumber' : string,
 }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
@@ -79,12 +110,24 @@ export interface _SERVICE {
   '_caffeineStorageUpdateGatewayPrincipals' : ActorMethod<[], undefined>,
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'createBooking' : ActorMethod<
+    [BookingRequest],
+    { 'error' : ServiceError } |
+      { 'success' : BookingResponse }
+  >,
+  'createUserProfile' : ActorMethod<
+    [string, string, [] | [Address]],
+    { 'ok' : null } |
+      { 'alreadyExists' : string } |
+      { 'invalidId' : null }
+  >,
   'getAllScrapShops' : ActorMethod<[], Array<ScrapShop>>,
   'getBookingPhase' : ActorMethod<[BookingStatus], string>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getScrapShopByPhone' : ActorMethod<[string], [] | [ScrapShop]>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
+  'getUserProfileById' : ActorMethod<[string], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'registerScrapShop' : ActorMethod<
     [

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { Truck, Phone, MapPin, Package, ChevronRight, CheckCircle2, Clock, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,11 +10,11 @@ import {
   useGetBookingsByPartnerId,
   usePartnerAcceptBooking,
   usePartnerUpdateBookingStatus,
+  BookingStatus,
 } from '../hooks/useQueries';
-import { BookingStatus } from '../backend';
 import type { Booking } from '../hooks/useQueries';
 
-const STATUS_LABELS: Record<BookingStatus, string> = {
+const STATUS_LABELS: Record<string, string> = {
   [BookingStatus.pending]: 'Pending',
   [BookingStatus.confirmed]: 'Confirmed',
   [BookingStatus.partner_assigned]: 'Assigned to You',
@@ -24,7 +24,7 @@ const STATUS_LABELS: Record<BookingStatus, string> = {
   [BookingStatus.cancelled]: 'Cancelled',
 };
 
-const STATUS_COLORS: Record<BookingStatus, string> = {
+const STATUS_COLORS: Record<string, string> = {
   [BookingStatus.pending]: 'bg-yellow-100 text-yellow-700',
   [BookingStatus.confirmed]: 'bg-blue-100 text-blue-700',
   [BookingStatus.partner_assigned]: 'bg-indigo-100 text-indigo-700',
@@ -34,14 +34,20 @@ const STATUS_COLORS: Record<BookingStatus, string> = {
   [BookingStatus.cancelled]: 'bg-red-100 text-red-700',
 };
 
-const NEXT_STATUS_LABEL: Partial<Record<BookingStatus, string>> = {
+const NEXT_STATUS_LABEL: Partial<Record<string, string>> = {
   [BookingStatus.partner_assigned]: 'Start Journey',
   [BookingStatus.on_the_way]: 'Mark Arrived',
   [BookingStatus.arrived]: 'Complete Pickup',
 };
 
-function formatDate(ts: bigint) {
-  return new Date(Number(ts) / 1_000_000).toLocaleDateString('en-IN', {
+const NEXT_STATUS_MAP: Partial<Record<string, BookingStatus>> = {
+  [BookingStatus.partner_assigned]: BookingStatus.on_the_way,
+  [BookingStatus.on_the_way]: BookingStatus.arrived,
+  [BookingStatus.arrived]: BookingStatus.completed,
+};
+
+function formatDate(ts: number) {
+  return new Date(ts).toLocaleDateString('en-IN', {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -55,7 +61,7 @@ function BookingCard({
   partnerId,
 }: {
   booking: Booking;
-  partnerId: bigint;
+  partnerId: number;
 }) {
   const acceptBooking = usePartnerAcceptBooking();
   const updateStatus = usePartnerUpdateBookingStatus();
@@ -74,8 +80,10 @@ function BookingCard({
   };
 
   const handleAdvance = async () => {
+    const nextStatus = NEXT_STATUS_MAP[booking.status];
+    if (!nextStatus) return;
     try {
-      await updateStatus.mutateAsync({ bookingId: booking.id, partnerId });
+      await updateStatus.mutateAsync({ bookingId: booking.id, status: nextStatus, partnerId });
       toast.success('Status updated!');
     } catch (err: any) {
       toast.error(err?.message || 'Failed to update status');
@@ -86,17 +94,17 @@ function BookingCard({
     <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="font-semibold text-sm text-foreground">Booking #{booking.id.toString()}</p>
+          <p className="font-semibold text-sm text-foreground">Booking #{booking.id}</p>
           <p className="text-xs text-muted-foreground mt-0.5">{formatDate(booking.scheduledTime)}</p>
         </div>
-        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[booking.status]}`}>
-          {STATUS_LABELS[booking.status]}
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[booking.status] || ''}`}>
+          {STATUS_LABELS[booking.status] || booking.status}
         </span>
       </div>
 
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <MapPin className="w-3.5 h-3.5 shrink-0" />
-        <span>Address ID: {booking.addressId.toString()}</span>
+        <span>{booking.address?.city || `Address #${booking.addressId}`}</span>
       </div>
 
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -244,7 +252,7 @@ export default function PartnerPanel() {
               ) : (
                 <div className="space-y-3">
                   {activeBookings.map(b => (
-                    <BookingCard key={b.id.toString()} booking={b} partnerId={partner.id} />
+                    <BookingCard key={b.id} booking={b} partnerId={partner.id} />
                   ))}
                 </div>
               )}
@@ -258,7 +266,7 @@ export default function PartnerPanel() {
                 </p>
                 <div className="space-y-3">
                   {completedBookings.slice(0, 3).map(b => (
-                    <BookingCard key={b.id.toString()} booking={b} partnerId={partner.id} />
+                    <BookingCard key={b.id} booking={b} partnerId={partner.id} />
                   ))}
                 </div>
               </div>

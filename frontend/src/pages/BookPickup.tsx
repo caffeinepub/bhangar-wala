@@ -1,20 +1,18 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { ArrowLeft, ArrowRight, MapPin, Package, Calendar, IndianRupee, Check, Plus } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, Package, CheckCircle, Plus, Minus, AlertCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useGetAddresses, useGetScrapCategories, useGetScrapRates, useCreateBooking, useAddBookingItem } from '../hooks/useQueries';
-import type { Address, ScrapCategory } from '../hooks/useQueries';
+import { useGetCallerUserProfile, useGetScrapCategories, useGetScrapRates, useCreateBooking } from '../hooks/useQueries';
+import type { Address } from '../backend';
 
-const TIME_SLOTS = [
-  { id: '9-11', label: '9:00 AM – 11:00 AM' },
-  { id: '11-1', label: '11:00 AM – 1:00 PM' },
-  { id: '2-4', label: '2:00 PM – 4:00 PM' },
-  { id: '4-6', label: '4:00 PM – 6:00 PM' },
-];
+interface ScrapItem {
+  categoryId: number;
+  categoryName: string;
+  estimatedWeight: number;
+  pricePerKg: number;
+}
+
+const STEPS = ['Address', 'Schedule', 'Items', 'Confirm'];
 
 function getNext7Days(): Date[] {
   const days: Date[] = [];
@@ -26,380 +24,431 @@ function getNext7Days(): Date[] {
   return days;
 }
 
-const STEPS = ['Address', 'Scrap', 'Schedule', 'Confirm'];
+const TIME_SLOTS = ['8:00 AM', '10:00 AM', '12:00 PM', '2:00 PM', '4:00 PM', '6:00 PM'];
 
 export default function BookPickup() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<ScrapCategory | null>(null);
-  const [selectedSubCategory, setSelectedSubCategory] = useState<ScrapCategory | null>(null);
-  const [weight, setWeight] = useState('');
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [selectedSlot, setSelectedSlot] = useState('');
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string | null>(null);
+  const [scrapItems, setScrapItems] = useState<ScrapItem[]>([]);
+  const [bookingError, setBookingError] = useState<string | null>(null);
 
-  const { data: addresses = [], isLoading: addressesLoading } = useGetAddresses();
-  const { data: categories = [], isLoading: categoriesLoading } = useGetScrapCategories();
+  const { data: profile, isLoading: profileLoading } = useGetCallerUserProfile();
+  const { data: categories = [] } = useGetScrapCategories();
   const { data: rates = [] } = useGetScrapRates();
-  const createBooking = useCreateBooking();
-  const addBookingItem = useAddBookingItem();
+  const createBookingMutation = useCreateBooking();
 
-  const parentCategories = categories.filter(c => !c.parentId);
-  const subCategories = selectedCategory
-    ? categories.filter(c => c.parentId && c.parentId.toString() === selectedCategory.id.toString())
-    : [];
+  const addresses: Address[] = profile?.addresses || [];
 
-  const activeCategory = selectedSubCategory || selectedCategory;
-  const rate = activeCategory
-    ? rates.find(r => r.categoryId.toString() === activeCategory.id.toString())
-    : null;
-  const estimatedPrice = rate && weight ? parseFloat(weight) * rate.pricePerKg : 0;
+  // Leaf categories (those with a parentId) are the ones with rates
+  const leafCategories = categories.filter((c) => c.parentId != null);
+
+  function getPriceForCategory(categoryId: number): number {
+    const rate = rates.find((r) => r.categoryId === categoryId);
+    return rate?.pricePerKg || 0;
+  }
+
+  function addItem(categoryId: number, categoryName: string) {
+    const existing = scrapItems.find((i) => i.categoryId === categoryId);
+    if (existing) return;
+    const pricePerKg = getPriceForCategory(categoryId);
+    setScrapItems((prev) => [
+      ...prev,
+      { categoryId, categoryName, estimatedWeight: 1, pricePerKg },
+    ]);
+  }
+
+  function removeItem(categoryId: number) {
+    setScrapItems((prev) => prev.filter((i) => i.categoryId !== categoryId));
+  }
+
+  function updateWeight(categoryId: number, delta: number) {
+    setScrapItems((prev) =>
+      prev.map((i) =>
+        i.categoryId === categoryId
+          ? { ...i, estimatedWeight: Math.max(0.5, +(i.estimatedWeight + delta).toFixed(1)) }
+          : i
+      )
+    );
+  }
+
+  const totalEstimatedAmount = scrapItems.reduce(
+    (sum, item) => sum + item.estimatedWeight * item.pricePerKg,
+    0
+  );
+
+  function getScheduledDate(): Date | null {
+    if (!selectedDay || !selectedTimeSlot) return null;
+    const [timePart, meridiem] = selectedTimeSlot.split(' ');
+    const [hourStr, minuteStr] = timePart.split(':');
+    let hour = parseInt(hourStr, 10);
+    const minute = parseInt(minuteStr, 10);
+    if (meridiem === 'PM' && hour !== 12) hour += 12;
+    if (meridiem === 'AM' && hour === 12) hour = 0;
+    const date = new Date(selectedDay);
+    date.setHours(hour, minute, 0, 0);
+    return date;
+  }
+
+  async function handleConfirmBooking() {
+    setBookingError(null);
+
+    if (!selectedAddress) {
+      setBookingError('Please select a pickup address.');
+      return;
+    }
+    if (!selectedDay || !selectedTimeSlot) {
+      setBookingError('Please select a pickup date and time.');
+      return;
+    }
+    if (scrapItems.length === 0) {
+      setBookingError('Please add at least one scrap item.');
+      return;
+    }
+
+    const scheduledDate = getScheduledDate();
+    if (!scheduledDate) {
+      setBookingError('Invalid schedule. Please select date and time again.');
+      return;
+    }
+
+    try {
+      const booking = await createBookingMutation.mutateAsync({
+        address: selectedAddress,
+        scheduledTime: scheduledDate,
+        items: scrapItems.map((item) => ({
+          categoryId: item.categoryId,
+          estimatedWeight: item.estimatedWeight,
+        })),
+        totalEstimatedAmount,
+      });
+
+      navigate({ to: '/booking-confirmation', search: { bookingId: booking.id } });
+    } catch (err: any) {
+      setBookingError(err?.message || 'Failed to create booking. Please try again.');
+    }
+  }
+
+  function canProceed(): boolean {
+    if (step === 0) return !!selectedAddress;
+    if (step === 1) return !!selectedDay && !!selectedTimeSlot;
+    if (step === 2) return scrapItems.length > 0;
+    return true;
+  }
 
   const days = getNext7Days();
 
-  const canProceed = [
-    !!selectedAddress,
-    !!(activeCategory && weight && parseFloat(weight) > 0),
-    !!(selectedDate && selectedSlot),
-    true,
-  ][step];
-
-  const handleConfirm = async () => {
-    if (!selectedAddress || !activeCategory || !selectedDate || !selectedSlot) return;
-
-    const slotHour = selectedSlot === '9-11' ? 9 : selectedSlot === '11-1' ? 11 : selectedSlot === '2-4' ? 14 : 16;
-    const scheduledDate = new Date(selectedDate);
-    scheduledDate.setHours(slotHour, 0, 0, 0);
-    const scheduledTime = BigInt(scheduledDate.getTime()) * BigInt(1_000_000);
-
-    try {
-      const booking = await createBooking.mutateAsync({
-        addressId: selectedAddress.id,
-        scheduledTime,
-        totalEstimatedAmount: estimatedPrice,
-      });
-
-      await addBookingItem.mutateAsync({
-        bookingId: booking.id,
-        categoryId: activeCategory.id,
-        estimatedWeight: parseFloat(weight),
-      });
-
-      navigate({
-        to: '/booking-confirmation',
-        state: { bookingId: booking.id.toString() } as any,
-      });
-    } catch (err) {
-      console.error('Booking failed:', err);
-    }
-  };
-
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <div
-        className="px-4 pt-4 pb-6 relative"
-        style={{ background: 'linear-gradient(135deg, oklch(0.527 0.154 150) 0%, oklch(0.42 0.14 150) 100%)' }}
-      >
-        <button
-          onClick={() => step > 0 ? setStep(s => s - 1) : navigate({ to: '/home' })}
-          className="p-2 rounded-full bg-white/20 text-white min-w-[44px] min-h-[44px] flex items-center justify-center mb-3"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <h1 className="font-heading text-xl font-bold text-white">Book Pickup</h1>
-
-        {/* Progress */}
-        <div className="flex items-center gap-1 mt-4">
-          {STEPS.map((s, i) => (
-            <div key={s} className="flex items-center gap-1 flex-1">
-              <div className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold transition-all flex-shrink-0 ${
-                i < step ? 'bg-white text-primary' : i === step ? 'bg-white text-primary ring-2 ring-white/50' : 'bg-white/30 text-white'
-              }`}>
-                {i < step ? <Check className="w-3.5 h-3.5" /> : i + 1}
+      <header className="bg-primary text-primary-foreground px-4 pt-12 pb-4">
+        <div className="flex items-center gap-3">
+          <button onClick={() => (step > 0 ? setStep(step - 1) : navigate({ to: '/home' }))}>
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+          <h1 className="text-xl font-bold">Book Pickup</h1>
+        </div>
+        {/* Step indicator */}
+        <div className="flex items-center mt-4 gap-1">
+          {STEPS.map((label, idx) => (
+            <React.Fragment key={label}>
+              <div className="flex flex-col items-center">
+                <div
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors ${
+                    idx < step
+                      ? 'bg-white text-primary border-white'
+                      : idx === step
+                      ? 'bg-primary-foreground text-primary border-primary-foreground'
+                      : 'bg-transparent text-primary-foreground border-primary-foreground/40'
+                  }`}
+                >
+                  {idx < step ? <CheckCircle className="w-4 h-4" /> : idx + 1}
+                </div>
+                <span className="text-[10px] mt-0.5 text-primary-foreground/80">{label}</span>
               </div>
-              <span className={`text-xs font-medium hidden sm:inline ${i === step ? 'text-white' : 'text-white/60'}`}>{s}</span>
-              {i < STEPS.length - 1 && <div className={`flex-1 h-0.5 ${i < step ? 'bg-white' : 'bg-white/30'}`} />}
-            </div>
+              {idx < STEPS.length - 1 && (
+                <div
+                  className={`flex-1 h-0.5 mb-4 ${idx < step ? 'bg-white' : 'bg-primary-foreground/30'}`}
+                />
+              )}
+            </React.Fragment>
           ))}
         </div>
-      </div>
+      </header>
 
-      {/* Step Content */}
-      <div className="flex-1 px-4 py-6 space-y-4">
+      <main className="flex-1 overflow-y-auto px-4 py-6 pb-32">
         {/* Step 0: Address */}
         {step === 0 && (
-          <div className="space-y-4">
-            <h2 className="font-heading font-bold text-foreground text-lg">Select Pickup Address</h2>
-            {addressesLoading ? (
-              <div className="space-y-3">{[1,2].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}</div>
+          <div>
+            <h2 className="text-lg font-semibold text-foreground mb-4">Select Pickup Address</h2>
+            {profileLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
             ) : addresses.length === 0 ? (
               <div className="text-center py-8">
                 <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground text-sm mb-4">No saved addresses. Add one to continue.</p>
-                <Button variant="outline" onClick={() => navigate({ to: '/add-address' })} className="rounded-xl border-primary text-primary">
+                <p className="text-muted-foreground mb-4">No saved addresses found.</p>
+                <Button onClick={() => navigate({ to: '/add-address' })}>
                   <Plus className="w-4 h-4 mr-2" /> Add Address
                 </Button>
               </div>
             ) : (
               <div className="space-y-3">
-                {addresses.map(addr => (
+                {addresses.map((addr) => (
                   <button
-                    key={addr.id.toString()}
+                    key={Number(addr.id)}
                     onClick={() => setSelectedAddress(addr)}
-                    className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
-                      selectedAddress?.id.toString() === addr.id.toString()
-                        ? 'border-primary bg-primary-light'
-                        : 'border-border bg-card hover:border-primary/50'
+                    className={`w-full text-left p-4 rounded-xl border-2 transition-colors ${
+                      selectedAddress && Number(selectedAddress.id) === Number(addr.id)
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border bg-card'
                     }`}
                   >
                     <div className="flex items-start gap-3">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                        selectedAddress?.id.toString() === addr.id.toString() ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                      }`}>
-                        <MapPin className="w-4 h-4" />
-                      </div>
+                      <MapPin className="w-5 h-5 text-primary mt-0.5 shrink-0" />
                       <div>
-                        <p className="font-semibold text-sm text-foreground">{addr.addressLabel}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{addr.street}, {addr.city} - {addr.pincode}</p>
+                        <p className="font-medium text-foreground">
+                          {addr.addressLabel || 'Home'}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {addr.street}, {addr.city} - {addr.pincode}
+                        </p>
                       </div>
-                      {selectedAddress?.id.toString() === addr.id.toString() && (
-                        <Check className="w-5 h-5 text-primary ml-auto flex-shrink-0" />
-                      )}
                     </div>
                   </button>
                 ))}
                 <button
                   onClick={() => navigate({ to: '/add-address' })}
-                  className="w-full p-4 rounded-xl border-2 border-dashed border-border text-center text-muted-foreground hover:border-primary hover:text-primary transition-all"
+                  className="w-full p-4 rounded-xl border-2 border-dashed border-primary/40 text-primary flex items-center justify-center gap-2 hover:bg-primary/5 transition-colors"
                 >
-                  <Plus className="w-4 h-4 inline mr-2" />
-                  Add New Address
+                  <Plus className="w-5 h-5" />
+                  <span className="font-medium">Add New Address</span>
                 </button>
               </div>
             )}
           </div>
         )}
 
-        {/* Step 1: Scrap */}
+        {/* Step 1: Schedule */}
         {step === 1 && (
-          <div className="space-y-4">
-            <h2 className="font-heading font-bold text-foreground text-lg">Select Scrap Type</h2>
-
-            <div className="space-y-2">
-              <Label>Category</Label>
-              <Select
-                value={selectedCategory?.id.toString() || ''}
-                onValueChange={val => {
-                  const cat = parentCategories.find(c => c.id.toString() === val);
-                  setSelectedCategory(cat || null);
-                  setSelectedSubCategory(null);
-                }}
-              >
-                <SelectTrigger className="min-h-[48px]">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {parentCategories.map(cat => (
-                    <SelectItem key={cat.id.toString()} value={cat.id.toString()}>
-                      {cat.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div>
+            <h2 className="text-lg font-semibold text-foreground mb-4">Select Pickup Schedule</h2>
+            <p className="text-sm text-muted-foreground mb-3">Choose a date</p>
+            <div className="flex gap-2 overflow-x-auto pb-2 mb-6">
+              {days.map((day: Date) => {
+                const isSelected =
+                  selectedDay?.toDateString() === day.toDateString();
+                return (
+                  <button
+                    key={day.toISOString()}
+                    onClick={() => setSelectedDay(day)}
+                    className={`flex flex-col items-center p-3 rounded-xl border-2 min-w-[60px] transition-colors ${
+                      isSelected
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border bg-card text-foreground'
+                    }`}
+                  >
+                    <span className="text-xs font-medium">
+                      {day.toLocaleDateString('en-IN', { weekday: 'short' })}
+                    </span>
+                    <span className="text-lg font-bold">{day.getDate()}</span>
+                    <span className="text-xs">
+                      {day.toLocaleDateString('en-IN', { month: 'short' })}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
-
-            {subCategories.length > 0 && (
-              <div className="space-y-2">
-                <Label>Sub-category</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {subCategories.map(sub => {
-                    const subRate = rates.find(r => r.categoryId.toString() === sub.id.toString());
-                    return (
-                      <button
-                        key={sub.id.toString()}
-                        onClick={() => setSelectedSubCategory(sub)}
-                        className={`p-3 rounded-xl border-2 text-left transition-all ${
-                          selectedSubCategory?.id.toString() === sub.id.toString()
-                            ? 'border-primary bg-primary-light'
-                            : 'border-border bg-card hover:border-primary/50'
-                        }`}
-                      >
-                        <p className="font-medium text-sm text-foreground">{sub.name}</p>
-                        {subRate && <p className="text-xs text-primary font-bold mt-0.5">₹{subRate.pricePerKg}/kg</p>}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label>Estimated Weight (kg)</Label>
-              <Input
-                type="number"
-                placeholder="e.g. 5.5"
-                value={weight}
-                onChange={e => setWeight(e.target.value)}
-                min="0.1"
-                step="0.1"
-                className="min-h-[48px] text-base"
-                inputMode="decimal"
-              />
+            <p className="text-sm text-muted-foreground mb-3">Choose a time slot</p>
+            <div className="grid grid-cols-2 gap-3">
+              {TIME_SLOTS.map((slot) => (
+                <button
+                  key={slot}
+                  onClick={() => setSelectedTimeSlot(slot)}
+                  className={`p-3 rounded-xl border-2 text-sm font-medium transition-colors ${
+                    selectedTimeSlot === slot
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border bg-card text-foreground'
+                  }`}
+                >
+                  {slot}
+                </button>
+              ))}
             </div>
-
-            {activeCategory && weight && parseFloat(weight) > 0 && rate && (
-              <div className="p-4 rounded-xl bg-primary-light border border-primary/20">
-                <p className="text-sm text-muted-foreground">Estimated Price</p>
-                <p className="font-heading text-2xl font-bold text-primary mt-1">₹{estimatedPrice.toFixed(2)}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {activeCategory.name} × {weight} kg × ₹{rate.pricePerKg}/kg
-                </p>
-              </div>
-            )}
           </div>
         )}
 
-        {/* Step 2: Schedule */}
+        {/* Step 2: Items */}
         {step === 2 && (
-          <div className="space-y-4">
-            <h2 className="font-heading font-bold text-foreground text-lg">Schedule Pickup</h2>
-
-            <div className="space-y-2">
-              <Label>Select Date</Label>
-              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                {days.map((day: Date) => {
-                  const isSelected = selectedDate?.toDateString() === day.toDateString();
-                  const isToday = day.toDateString() === new Date().toDateString();
-                  return (
-                    <button
-                      key={day.toISOString()}
-                      onClick={() => setSelectedDate(day)}
-                      className={`flex-shrink-0 flex flex-col items-center p-3 rounded-xl border-2 min-w-[60px] transition-all ${
-                        isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card hover:border-primary/50'
-                      }`}
-                    >
-                      <span className={`text-xs font-medium ${isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                        {isToday ? 'Today' : day.toLocaleDateString('en', { weekday: 'short' })}
-                      </span>
-                      <span className={`text-lg font-bold mt-0.5 ${isSelected ? 'text-primary-foreground' : 'text-foreground'}`}>
-                        {day.getDate()}
-                      </span>
-                      <span className={`text-xs ${isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                        {day.toLocaleDateString('en', { month: 'short' })}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Select Time Slot</Label>
-              <div className="grid grid-cols-2 gap-3">
-                {TIME_SLOTS.map(slot => (
-                  <button
-                    key={slot.id}
-                    onClick={() => setSelectedSlot(slot.id)}
-                    className={`p-3 rounded-xl border-2 text-center transition-all ${
-                      selectedSlot === slot.id ? 'border-primary bg-primary-light' : 'border-border bg-card hover:border-primary/50'
+          <div>
+            <h2 className="text-lg font-semibold text-foreground mb-4">Select Scrap Items</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Tap an item to add it, then adjust the estimated weight.
+            </p>
+            <div className="space-y-2 mb-6">
+              {leafCategories.map((cat) => {
+                const added = scrapItems.find((i) => i.categoryId === cat.id);
+                const price = getPriceForCategory(cat.id);
+                return (
+                  <div
+                    key={cat.id}
+                    className={`p-4 rounded-xl border-2 transition-colors ${
+                      added ? 'border-primary bg-primary/5' : 'border-border bg-card'
                     }`}
                   >
-                    <p className={`text-sm font-medium ${selectedSlot === slot.id ? 'text-primary' : 'text-foreground'}`}>
-                      {slot.label}
-                    </p>
-                  </button>
-                ))}
-              </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-foreground">{cat.name}</p>
+                        <p className="text-xs text-muted-foreground">₹{price}/kg</p>
+                      </div>
+                      {added ? (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => updateWeight(cat.id, -0.5)}
+                            className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center"
+                          >
+                            <Minus className="w-4 h-4" />
+                          </button>
+                          <span className="w-12 text-center font-semibold text-foreground">
+                            {added.estimatedWeight} kg
+                          </span>
+                          <button
+                            onClick={() => updateWeight(cat.id, 0.5)}
+                            className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => removeItem(cat.id)}
+                            className="w-8 h-8 rounded-full bg-destructive/10 text-destructive flex items-center justify-center ml-1"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => addItem(cat.id, cat.name)}
+                          className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium"
+                        >
+                          Add
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
+            {scrapItems.length > 0 && (
+              <div className="bg-primary/5 rounded-xl p-4 border border-primary/20">
+                <p className="text-sm font-semibold text-foreground mb-2">Summary</p>
+                {scrapItems.map((item) => (
+                  <div key={item.categoryId} className="flex justify-between text-sm text-muted-foreground">
+                    <span>{item.categoryName} × {item.estimatedWeight} kg</span>
+                    <span>₹{(item.estimatedWeight * item.pricePerKg).toFixed(0)}</span>
+                  </div>
+                ))}
+                <div className="border-t border-primary/20 mt-2 pt-2 flex justify-between font-semibold text-foreground">
+                  <span>Estimated Total</span>
+                  <span>₹{totalEstimatedAmount.toFixed(0)}</span>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         {/* Step 3: Confirm */}
         {step === 3 && (
-          <div className="space-y-4">
-            <h2 className="font-heading font-bold text-foreground text-lg">Confirm Booking</h2>
+          <div>
+            <h2 className="text-lg font-semibold text-foreground mb-4">Confirm Booking</h2>
 
-            <div className="bg-card rounded-2xl border border-border overflow-hidden">
-              <div className="p-4 border-b border-border bg-primary-light">
-                <p className="font-heading font-bold text-primary text-sm">Booking Summary</p>
+            {/* Address */}
+            <div className="bg-card rounded-xl border border-border p-4 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <MapPin className="w-4 h-4 text-primary" />
+                <span className="text-sm font-semibold text-foreground">Pickup Address</span>
               </div>
-              <div className="p-4 space-y-3">
-                <div className="flex items-start gap-3">
-                  <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Pickup Address</p>
-                    <p className="text-sm font-medium text-foreground">{selectedAddress?.addressLabel}</p>
-                    <p className="text-xs text-muted-foreground">{selectedAddress?.street}, {selectedAddress?.city}</p>
-                  </div>
+              {selectedAddress && (
+                <p className="text-sm text-muted-foreground">
+                  {selectedAddress.street}, {selectedAddress.city} - {selectedAddress.pincode}
+                </p>
+              )}
+            </div>
+
+            {/* Schedule */}
+            <div className="bg-card rounded-xl border border-border p-4 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Calendar className="w-4 h-4 text-primary" />
+                <span className="text-sm font-semibold text-foreground">Schedule</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {selectedDay?.toLocaleDateString('en-IN', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long',
+                })}{' '}
+                at {selectedTimeSlot}
+              </p>
+            </div>
+
+            {/* Items */}
+            <div className="bg-card rounded-xl border border-border p-4 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Package className="w-4 h-4 text-primary" />
+                <span className="text-sm font-semibold text-foreground">Scrap Items</span>
+              </div>
+              {scrapItems.map((item) => (
+                <div key={item.categoryId} className="flex justify-between text-sm text-muted-foreground py-1">
+                  <span>{item.categoryName} × {item.estimatedWeight} kg</span>
+                  <span>₹{(item.estimatedWeight * item.pricePerKg).toFixed(0)}</span>
                 </div>
-                <div className="h-px bg-border" />
-                <div className="flex items-start gap-3">
-                  <Package className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Scrap Details</p>
-                    <p className="text-sm font-medium text-foreground">{activeCategory?.name}</p>
-                    <p className="text-xs text-muted-foreground">~{weight} kg</p>
-                  </div>
-                </div>
-                <div className="h-px bg-border" />
-                <div className="flex items-start gap-3">
-                  <Calendar className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Scheduled Time</p>
-                    <p className="text-sm font-medium text-foreground">
-                      {selectedDate?.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{TIME_SLOTS.find(s => s.id === selectedSlot)?.label}</p>
-                  </div>
-                </div>
-                <div className="h-px bg-border" />
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <IndianRupee className="w-4 h-4 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">Estimated Earnings</p>
-                  </div>
-                  <p className="font-heading text-xl font-bold text-primary">₹{estimatedPrice.toFixed(2)}</p>
-                </div>
+              ))}
+              <div className="border-t border-border mt-2 pt-2 flex justify-between font-semibold text-foreground text-sm">
+                <span>Estimated Total</span>
+                <span>₹{totalEstimatedAmount.toFixed(0)}</span>
               </div>
             </div>
 
+            {/* Error */}
+            {bookingError && (
+              <div className="flex items-start gap-2 bg-destructive/10 border border-destructive/30 rounded-xl p-3 mb-4">
+                <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                <p className="text-sm text-destructive">{bookingError}</p>
+              </div>
+            )}
+
             <p className="text-xs text-muted-foreground text-center">
-              * Final amount may vary based on actual weight measured at pickup
+              Final amount will be calculated after weighing at pickup.
             </p>
           </div>
         )}
-      </div>
+      </main>
 
-      {/* Bottom Action */}
-      <div className="px-4 pb-6 pt-2 border-t border-border bg-card">
+      {/* Bottom CTA */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border px-4 py-4">
         {step < 3 ? (
           <Button
-            onClick={() => setStep(s => s + 1)}
-            disabled={!canProceed}
-            className="w-full min-h-[52px] text-base font-semibold rounded-xl"
-            style={{ background: canProceed ? 'oklch(0.527 0.154 150)' : undefined }}
+            className="w-full"
+            disabled={!canProceed()}
+            onClick={() => setStep(step + 1)}
           >
             Continue
-            <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
         ) : (
           <Button
-            onClick={handleConfirm}
-            disabled={createBooking.isPending || addBookingItem.isPending}
-            className="w-full min-h-[52px] text-base font-semibold rounded-xl"
-            style={{ background: 'oklch(0.527 0.154 150)' }}
+            className="w-full"
+            disabled={createBookingMutation.isPending}
+            onClick={handleConfirmBooking}
           >
-            {createBooking.isPending || addBookingItem.isPending ? (
-              <span className="flex items-center gap-2">
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            {createBookingMutation.isPending ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 Confirming...
-              </span>
+              </>
             ) : (
-              <span className="flex items-center gap-2">
-                <Check className="w-4 h-4" />
-                Confirm Booking
-              </span>
+              'Confirm Booking'
             )}
           </Button>
         )}

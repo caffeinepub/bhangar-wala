@@ -1,96 +1,53 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Revert to phone OTP login flow",
+  "title": "Fix booking creation and address saving errors on Book Pickup screen",
   "requirements": [
     {
-      "id": "REQ-57",
-      "summary": "Restore Login screen to original phone OTP flow with country code selector and terms checkbox, removing Internet Identity UI",
+      "id": "REQ-64",
+      "summary": "Fix the 'Failed to save address. Please try again.' error on the Add Address screen by correcting userId format, field validation, address label defaults, lat/lng serialization, and error handling in the addAddress mutation",
       "acceptanceCriteria": [
-        "The /login route renders a phone number input with country code selector defaulting to +91",
-        "A 'Send OTP' button is present and navigates to /otp-verification on valid phone number submission",
-        "A terms & conditions checkbox is present",
-        "The Internet Identity 'Sign In' button is not present on the login screen",
-        "No II-related error state or retry button is shown on the login screen"
+        "Filling in Street Address, City, and Pincode and tapping 'Save Address' successfully saves the address without showing 'Failed to save address' error",
+        "The userId is correctly derived from localStorage and matches the format expected by the backend addAddress method",
+        "Optional lat/lng fields are passed as null (not undefined or empty string) when not entered",
+        "A descriptive error message is shown inline if the backend call genuinely fails",
+        "On success, the user is navigated back to /addresses and the new address appears in the list"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/Login.tsx",
+          "path": "frontend/src/pages/AddAddress.tsx",
           "operation": "modify",
-          "description": "Replace the Internet Identity sign-in UI with the original phone OTP flow. Add a phone number input field, country code selector defaulting to +91, a 'Send OTP' button, and a required terms & conditions checkbox. On valid phone submission, store the phone number in sessionStorage and navigate to /otp-verification. Remove all Internet Identity button, error handling, and retry UI from this page."
-        }
-      ]
-    },
-    {
-      "id": "REQ-58",
-      "summary": "Restore OTP Verification page with 6-digit input, countdown timer, and navigation based on user profile existence",
-      "acceptanceCriteria": [
-        "The /otp-verification route is registered and accessible",
-        "6 individual digit input boxes are rendered",
-        "A 60-second countdown timer is shown",
-        "The 'Resend OTP' button is disabled until the timer expires",
-        "Submitting any valid 6-digit code navigates to /profile-setup for new users or /home for returning users",
-        "Auth session is saved to localStorage on success",
-        "The helper hint 'Enter any 6-digit code to verify' is visible below the input boxes"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/OtpVerification.tsx",
-          "operation": "modify",
-          "description": "Replace the Internet Identity login trigger with the original OTP verification logic. Render 6 individual digit input boxes with the helper hint 'Enter any 6-digit code to verify' below them. Add a 60-second countdown timer and a 'Resend OTP' button that is only enabled after the timer expires. On submitting any valid 6-digit code, store an auth session object in localStorage (with phone number and timestamp), then check if the user has a profile via getCallerUserProfile. Navigate first-time users (no profile) to /profile-setup and returning users (existing profile) to /home."
+          "description": "Repair the address submission flow: (1) ensure all required fields (street, city, pincode) are validated as non-empty before calling the mutation; (2) ensure the address label defaults to 'Home' if not set by the user; (3) ensure optional lat/lng fields are explicitly set to null (not undefined or empty string) when not provided; (4) add inline error message display for backend failures; (5) ensure successful save navigates to /addresses. Verify the backend's expected Address type in backend.d.ts before implementing."
         },
         {
-          "path": "frontend/src/App.tsx",
+          "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Remove or update the redirect from /otp-verification to /login. Ensure the /otp-verification route is registered and accessible, not redirected away."
+          "description": "Fix the useAddAddress mutation hook: (1) ensure the userId is read from localStorage (phone number) and stripped of any '+91' prefix to match backend expectations; (2) wrap the actor.saveCallerUserProfile call in a try/catch block to surface descriptive error messages; (3) ensure the Address object passed to the backend includes street, city, pincode, and optional lat/lng as null when not provided; (4) ensure addressLabel is set to a valid default ('Home', 'Work', or 'Other') if missing; (5) invalidate the 'userProfile' query on success to refresh the address list. Verify the backend's expected UserProfile and Address types in backend.d.ts before implementing."
         }
       ]
     },
     {
-      "id": "REQ-59",
-      "summary": "Restore Profile Setup to use phone number from localStorage as user identifier",
+      "id": "REQ-65",
+      "summary": "Fix the booking creation error on the Book Pickup screen by correcting userId format, addressId validation, scheduledTime serialization, BookingItems validation, totalEstimatedAmount computation, and error handling in the createBooking mutation",
       "acceptanceCriteria": [
-        "Profile Setup reads the phone number from localStorage set during OTP verification",
-        "The phone field on the profile setup form is required",
-        "createUserProfile is called with the phone-based user ID, not an Internet Identity principal"
+        "Completing all 4 steps of the Book Pickup flow and tapping 'Confirm Booking' successfully creates a booking in the backend without an error",
+        "The userId is stripped of '+91' prefix to match the backend's expected phone number format",
+        "scheduledTime is passed as a valid integer timestamp in the format expected by the Motoko createBooking method",
+        "BookingItems array contains at least one item with a valid categoryId and a positive estimatedWeight",
+        "totalEstimatedAmount is a valid positive Float",
+        "On success, the user is navigated to /booking-confirmation and the booking ID is displayed",
+        "If the backend returns an error, a descriptive inline error message is shown on the confirmation step"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/ProfileSetup.tsx",
+          "path": "frontend/src/pages/BookPickup.tsx",
           "operation": "modify",
-          "description": "Read the phone number from the localStorage auth session (set in OTP verification) and use it as the user identifier when calling saveCallerUserProfile. Make the phone field on the profile setup form required (not optional). Ensure the profile is associated with the phone-based session rather than an Internet Identity principal."
-        }
-      ]
-    },
-    {
-      "id": "REQ-60",
-      "summary": "Restore Splash screen redirect logic to use localStorage session detection instead of Internet Identity state",
-      "acceptanceCriteria": [
-        "The splash screen checks localStorage for an auth session",
-        "Authenticated users (session in localStorage) are redirected to /home",
-        "Unauthenticated users are redirected to /login",
-        "The redirect does not depend on Internet Identity initialization"
-      ],
-      "file_operations": [
+          "description": "Repair the booking creation flow in Step 4 (confirm screen): (1) ensure the addressId is validated to reference a valid user address before allowing booking submission — if no addresses exist, block progression and prompt the user to add an address first; (2) ensure all BookingItems have a valid categoryId and a positive estimatedWeight before submission; (3) ensure totalEstimatedAmount is computed as a positive Float and passed correctly; (4) ensure scheduledTime is serialized as an integer timestamp (nanoseconds or milliseconds as expected by the backend); (5) add inline error message display on the confirm screen if the backend returns an error variant or throws; (6) ensure successful booking creation navigates to /booking-confirmation with the booking ID. Verify the backend's expected BookingRequest and BookingItemRequest types in backend.d.ts before implementing."
+        },
         {
-          "path": "frontend/src/pages/Splash.tsx",
+          "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Replace the Internet Identity initialization check with localStorage session detection. Check for the presence of an auth session object in localStorage. Redirect authenticated users (valid session present) to /home and unauthenticated users (no session) to /login. Remove any dependency on Internet Identity initialization state or the useInternetIdentity hook."
-        }
-      ]
-    },
-    {
-      "id": "REQ-61",
-      "summary": "Restore Profile screen logout to clear localStorage auth session without calling Internet Identity logout",
-      "acceptanceCriteria": [
-        "Tapping 'Logout' clears localStorage and redirects to /login",
-        "No Internet Identity logout call is made on the standard user logout action"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/Profile.tsx",
-          "operation": "modify",
-          "description": "Update the logout handler to clear the localStorage auth session and redirect to /login. Remove the Internet Identity clear() call from the standard user logout flow. Ensure that tapping 'Logout' only performs localStorage cleanup and navigation, without invoking any Internet Identity logout method."
+          "description": "Fix the useCreateBooking mutation hook: (1) ensure the userId is read from localStorage (phone number) and stripped of any '+91' prefix to match backend expectations; (2) ensure scheduledTime is passed as a bigint timestamp (convert from Date to nanoseconds or milliseconds as required by the backend); (3) ensure the BookingItems array is non-empty and each item has a valid categoryId and a positive estimatedWeight before calling the actor; (4) ensure totalEstimatedAmount is passed as a Float; (5) wrap the actor.createBooking call in a try/catch block to surface descriptive error messages; (6) handle both error variants and thrown exceptions gracefully; (7) invalidate relevant queries (bookings, notifications) on success. Verify the backend's expected BookingRequest type in backend.d.ts before implementing."
         }
       ]
     }

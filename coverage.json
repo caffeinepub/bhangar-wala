@@ -1,85 +1,81 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-25T07:33:32.292Z",
+  "generatedAt": "2026-02-25T08:42:58.362Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 5,
-    "implemented": 5,
+    "total": 3,
+    "implemented": 2,
     "items": [
       {
-        "id": "REQ-57",
-        "summary": "Restore the Login screen (`/login`) to the original phone OTP flow: display a phone number input field, a country code selector defaulting to +91, a 'Send OTP' button, and a terms & conditions checkbox. On submitting a valid phone number, navigate to `/otp-verification` and store the phone number in component state. Remove the Internet Identity 'Sign In' button and any II-related error/retry UI from this screen.",
+        "id": "REQ-64",
+        "summary": "Fix the 'Failed to save address. Please try again.' error on the Add Address screen (`/add-address`). Diagnose and repair the `addAddress` backend call: (1) ensure the userId passed to the backend is correctly read from localStorage (the stored phone number without country code prefix if required by backend); (2) ensure all required fields (street, city, pincode) are non-empty before submission; (3) ensure the address label defaults to a valid value ('Home', 'Work', or 'Other') if unset; (4) ensure optional lat/lng fields are serialised as `null` when not provided rather than as undefined or empty string; (5) wrap the actor call in a proper try/catch and surface a descriptive inline error message. After a successful save, navigate back to `/addresses`.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/Login.tsx"
+          "frontend/src/pages/AddAddress.tsx",
+          "frontend/src/hooks/useQueries.ts"
         ],
         "matchedFiles": [
-          "frontend/src/pages/Login.tsx"
+          "frontend/src/pages/AddAddress.tsx",
+          "frontend/src/hooks/useQueries.ts"
         ]
       },
       {
-        "id": "REQ-58",
-        "summary": "Restore the `/otp-verification` route and the OTP Verification page. The page must render 6 individual digit input boxes, a 60-second countdown timer, a 'Resend OTP' button (enabled only after the timer expires), and a 'Verify' button. On successful verification (accept any 6-digit code), navigate first-time users to `/profile-setup` and returning users to `/home`. Store the auth session in localStorage. Include the helper hint 'Enter any 6-digit code to verify' below the digit input boxes.",
+        "id": "REQ-65",
+        "summary": "Fix the booking creation error on the Book Pickup screen (`/book-pickup`). Diagnose and repair the `createBooking` backend call: (1) ensure the userId passed to the backend is the plain phone number from localStorage (stripped of '+91' prefix if the backend expects a plain 10-digit string); (2) ensure the addressId references a valid address that belongs to the user — if no addresses are present, block progression and prompt the user to add an address first; (3) ensure scheduledTime is serialised as an integer timestamp (nanoseconds or milliseconds as expected by the Motoko backend) and not as a string or ISO date; (4) ensure all BookingItems have valid categoryId, estimatedWeight (a positive Float), and that the array is non-empty before submission; (5) ensure totalEstimatedAmount is computed correctly as a Float and passed in the expected Motoko type; (6) wrap the actor call in a try/catch and surface a human-readable error message on the Step 4 confirm screen if the backend returns an error variant or throws. After a successful booking creation, navigate to `/booking-confirmation` with the new booking ID.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/OtpVerification.tsx",
-          "frontend/src/App.tsx"
+          "frontend/src/pages/BookPickup.tsx",
+          "frontend/src/hooks/useQueries.ts"
         ],
         "matchedFiles": [
-          "frontend/src/pages/OtpVerification.tsx",
-          "frontend/src/App.tsx"
+          "frontend/src/pages/BookPickup.tsx",
+          "frontend/src/hooks/useQueries.ts"
         ]
       },
       {
-        "id": "REQ-59",
-        "summary": "Restore the Profile Setup screen (`/profile-setup`) to use the phone number stored in localStorage (set during OTP login) as the user identifier when calling the backend `createUserProfile` method. Make the phone field on the profile setup form required (not optional), consistent with the phone-OTP-based auth flow.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/ProfileSetup.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/ProfileSetup.tsx"
-        ]
-      },
-      {
-        "id": "REQ-60",
-        "summary": "Restore the Splash screen (`/splash`) redirect logic to use localStorage session detection (not Internet Identity initialization state) to determine whether to redirect to `/home` (authenticated) or `/login` (unauthenticated).",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/Splash.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/Splash.tsx"
-        ]
-      },
-      {
-        "id": "REQ-61",
-        "summary": "Restore the Profile screen (`/profile`) logout action to clear the localStorage auth session and redirect to `/login`, without calling any Internet Identity logout method.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/Profile.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/Profile.tsx"
-        ]
+        "id": "REQ-66",
+        "summary": "In `backend/main.mo`, audit the `addAddress` and `createBooking` method signatures to verify they accept the argument types that the frontend is sending (Text userId, Float weights, Int timestamps, optional lat/lng as `?Float`). If any parameter types are mismatched or the methods trap on edge-case inputs (empty optional fields, zero weights, addresses without lat/lng), fix the method implementations to handle these gracefully and return a descriptive error variant rather than trapping.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       }
     ]
   },
   "changedFiles": [
+    "backend/main.mo",
+    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/App.tsx",
-    "frontend/src/pages/Login.tsx",
-    "frontend/src/pages/OtpVerification.tsx",
-    "frontend/src/pages/Profile.tsx",
-    "frontend/src/pages/ProfileSetup.tsx",
-    "frontend/src/pages/Splash.tsx",
+    "frontend/src/backend.d.ts",
+    "frontend/src/backend.ts",
+    "frontend/src/declarations/backend.did.d.ts",
+    "frontend/src/declarations/backend.did.js",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/pages/AddAddress.tsx",
+    "frontend/src/pages/Addresses.tsx",
+    "frontend/src/pages/AdminBookings.tsx",
+    "frontend/src/pages/AdminDashboard.tsx",
+    "frontend/src/pages/AdminPartners.tsx",
+    "frontend/src/pages/AdminRates.tsx",
+    "frontend/src/pages/AdminSupportTickets.tsx",
+    "frontend/src/pages/BookPickup.tsx",
+    "frontend/src/pages/BookingConfirmation.tsx",
+    "frontend/src/pages/BookingDetails.tsx",
+    "frontend/src/pages/Bookings.tsx",
+    "frontend/src/pages/EditAddress.tsx",
+    "frontend/src/pages/Home.tsx",
+    "frontend/src/pages/PartnerPanel.tsx",
+    "frontend/src/pages/Payment.tsx",
+    "frontend/src/pages/PaymentSuccess.tsx",
+    "frontend/src/pages/RateService.tsx",
+    "frontend/src/pages/ShopRegister.tsx",
+    "frontend/src/pages/TrackPickup.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

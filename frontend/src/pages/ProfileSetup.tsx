@@ -4,7 +4,6 @@ import { Camera, User, ArrowRight, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useSaveCallerUserProfile, useAddAddress } from '../hooks/useQueries';
 import { useActor } from '../hooks/useActor';
 import { ExternalBlob } from '../utils/blobStorage';
 
@@ -25,16 +24,14 @@ export default function ProfileSetup() {
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState(sessionPhone);
-  const [profileImageUrl, setProfileImageUrl] = useState('');
   const [imagePreview, setImagePreview] = useState('');
   const [street, setStreet] = useState('');
   const [city, setCity] = useState('');
   const [pincode, setPincode] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const saveProfile = useSaveCallerUserProfile();
-  const addAddress = useAddAddress();
 
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -49,10 +46,9 @@ export default function ProfileSetup() {
       const arrayBuffer = await file.arrayBuffer();
       const bytes = new Uint8Array(arrayBuffer);
       const blob = ExternalBlob.fromBytes(bytes);
-      const url = blob.getDirectURL();
-      setProfileImageUrl(url);
+      blob.getDirectURL();
     } catch {
-      setProfileImageUrl('');
+      // ignore upload errors for profile photo
     } finally {
       setUploading(false);
     }
@@ -61,40 +57,54 @@ export default function ProfileSetup() {
   const handleSave = async () => {
     if (!name.trim() || !phone.trim() || !actor) return;
 
-    // Use the actor's caller principal as the user ID
-    // The phone number from the OTP session is used as the user's phone identifier
+    setErrorMsg('');
+    setSaving(true);
+
     try {
-      // We need a principal — use a placeholder derived from the phone for the id field
-      // The backend uses the caller principal automatically via saveCallerUserProfile
-      const { Principal } = await import('@dfinity/principal');
-      // Use anonymous principal as placeholder; backend uses caller identity
-      const principal = Principal.anonymous();
+      // Use the phone number directly as the userId (e.g. '+918779030070')
+      const userId = phone.trim();
 
-      await saveProfile.mutateAsync({
-        id: principal,
-        name: name.trim(),
-        phone: phone.trim(),
-        profileImage: profileImageUrl,
-      });
+      // Build optional address — pass null if all fields are empty
+      const hasAddress = street.trim() || city.trim() || pincode.trim();
+      const address = hasAddress
+        ? {
+            id: BigInt(0),
+            street: street.trim(),
+            city: city.trim(),
+            pincode: pincode.trim(),
+            addressLabel: 'Home',
+            lat: undefined,
+            lng: undefined,
+          }
+        : null;
 
-      if (street.trim() && city.trim() && pincode.trim()) {
-        await addAddress.mutateAsync({
-          addressLabel: 'Home',
-          street: street.trim(),
-          city: city.trim(),
-          pincode: pincode.trim(),
-          lat: null,
-          lng: null,
-        });
+      const result = await actor.createUserProfile(userId, name.trim(), address);
+
+      if (result.__kind__ === 'ok') {
+        // Persist auth session flag so Splash screen recognises the user
+        try {
+          const existing = localStorage.getItem('auth_session');
+          const session = existing ? JSON.parse(existing) : {};
+          localStorage.setItem('auth_session', JSON.stringify({ ...session, verified: true, phone: userId }));
+        } catch {
+          // ignore storage errors
+        }
+        navigate({ to: '/home' });
+      } else if (result.__kind__ === 'alreadyExists') {
+        // Profile already exists — treat as success and navigate home
+        navigate({ to: '/home' });
+      } else {
+        // #invalidId
+        setErrorMsg('Invalid phone number. Please go back and try again.');
       }
-
-      navigate({ to: '/home' });
-    } catch {
-      // error shown via saveProfile.isError
+    } catch (err) {
+      setErrorMsg('Failed to save profile. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
-  const isLoading = saveProfile.isPending || addAddress.isPending || uploading;
+  const isLoading = saving || uploading;
   const canSave = name.trim().length > 0 && phone.trim().length > 0 && !isLoading;
 
   return (
@@ -184,8 +194,8 @@ export default function ProfileSetup() {
           </div>
         </div>
 
-        {saveProfile.isError && (
-          <p className="text-destructive text-sm text-center">Failed to save profile. Please try again.</p>
+        {errorMsg && (
+          <p className="text-destructive text-sm text-center">{errorMsg}</p>
         )}
 
         <Button

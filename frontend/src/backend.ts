@@ -115,15 +115,19 @@ export type LanguageType = {
 export interface _CaffeineStorageRefillInformation {
     proposed_top_up_amount?: bigint;
 }
+export interface BookingRequest {
+    scheduledTime: bigint;
+    address: Address;
+    items: Array<BookingItemRequest>;
+    totalEstimatedAmount: number;
+}
 export interface _CaffeineStorageCreateCertificateResult {
     method: string;
     blob_hash: string;
 }
-export interface UserProfile {
-    id: Principal;
-    profileImage: string;
-    name: string;
-    phone: string;
+export interface BookingItemRequest {
+    categoryId: bigint;
+    estimatedWeight: number;
 }
 export interface ScrapShop {
     id: string;
@@ -139,6 +143,46 @@ export interface ScrapShop {
     registrationStatus: ScrapShopStatus;
     registeredAt: bigint;
     streetAddress: string;
+}
+export type ServiceError = {
+    __kind__: "invalidWeight";
+    invalidWeight: number;
+} | {
+    __kind__: "invalidAddress";
+    invalidAddress: null;
+} | {
+    __kind__: "unauthorized";
+    unauthorized: null;
+} | {
+    __kind__: "missingItems";
+    missingItems: null;
+} | {
+    __kind__: "backendError";
+    backendError: string;
+} | {
+    __kind__: "invalidCategory";
+    invalidCategory: bigint;
+};
+export interface BookingResponse {
+    bookingId: bigint;
+    partnerId?: bigint;
+    estimatedAmount: number;
+}
+export interface UserProfile {
+    profileImage?: string;
+    name: string;
+    email?: string;
+    addresses: Array<Address>;
+    phoneNumber: string;
+}
+export interface Address {
+    id: bigint;
+    lat?: number;
+    lng?: number;
+    street: string;
+    city: string;
+    addressLabel?: string;
+    pincode: string;
 }
 export enum BookingStatus {
     on_the_way = "on_the_way",
@@ -168,19 +212,37 @@ export interface backendInterface {
     _caffeineStorageUpdateGatewayPrincipals(): Promise<void>;
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    createBooking(bookingRequest: BookingRequest): Promise<{
+        __kind__: "error";
+        error: ServiceError;
+    } | {
+        __kind__: "success";
+        success: BookingResponse;
+    }>;
+    createUserProfile(userId: string, name: string, address: Address | null): Promise<{
+        __kind__: "ok";
+        ok: null;
+    } | {
+        __kind__: "alreadyExists";
+        alreadyExists: string;
+    } | {
+        __kind__: "invalidId";
+        invalidId: null;
+    }>;
     getAllScrapShops(): Promise<Array<ScrapShop>>;
     getBookingPhase(status: BookingStatus): Promise<string>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getScrapShopByPhone(phone: string): Promise<ScrapShop | null>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
+    getUserProfileById(_id: string): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     registerScrapShop(ownerName: string, shopName: string, phone: string, email: string, city: string, area: string, pincode: string, streetAddress: string, scrapCategoriesHandled: Array<bigint>, rawLanguage: string): Promise<ScrapShop>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     updateScrapShop(id: string, ownerName: string, shopName: string, email: string, city: string, area: string, pincode: string, streetAddress: string, scrapCategoriesHandled: Array<bigint>): Promise<ScrapShop>;
     updateScrapShopStatus(id: string, status: ScrapShopStatus): Promise<ScrapShop>;
 }
-import type { BookingStatus as _BookingStatus, LanguageType as _LanguageType, ScrapShop as _ScrapShop, ScrapShopStatus as _ScrapShopStatus, UserProfile as _UserProfile, UserRole as _UserRole, _CaffeineStorageRefillInformation as __CaffeineStorageRefillInformation, _CaffeineStorageRefillResult as __CaffeineStorageRefillResult } from "./declarations/backend.did.d.ts";
+import type { Address as _Address, BookingItemRequest as _BookingItemRequest, BookingRequest as _BookingRequest, BookingResponse as _BookingResponse, BookingStatus as _BookingStatus, LanguageType as _LanguageType, ScrapShop as _ScrapShop, ScrapShopStatus as _ScrapShopStatus, ServiceError as _ServiceError, UserProfile as _UserProfile, UserRole as _UserRole, _CaffeineStorageRefillInformation as __CaffeineStorageRefillInformation, _CaffeineStorageRefillResult as __CaffeineStorageRefillResult } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
     async _caffeineStorageBlobIsLive(arg0: Uint8Array): Promise<boolean> {
@@ -295,31 +357,74 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async createBooking(arg0: BookingRequest): Promise<{
+        __kind__: "error";
+        error: ServiceError;
+    } | {
+        __kind__: "success";
+        success: BookingResponse;
+    }> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.createBooking(to_candid_BookingRequest_n10(this._uploadFile, this._downloadFile, arg0));
+                return from_candid_variant_n14(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.createBooking(to_candid_BookingRequest_n10(this._uploadFile, this._downloadFile, arg0));
+            return from_candid_variant_n14(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async createUserProfile(arg0: string, arg1: string, arg2: Address | null): Promise<{
+        __kind__: "ok";
+        ok: null;
+    } | {
+        __kind__: "alreadyExists";
+        alreadyExists: string;
+    } | {
+        __kind__: "invalidId";
+        invalidId: null;
+    }> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.createUserProfile(arg0, arg1, to_candid_opt_n19(this._uploadFile, this._downloadFile, arg2));
+                return from_candid_variant_n20(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.createUserProfile(arg0, arg1, to_candid_opt_n19(this._uploadFile, this._downloadFile, arg2));
+            return from_candid_variant_n20(this._uploadFile, this._downloadFile, result);
+        }
+    }
     async getAllScrapShops(): Promise<Array<ScrapShop>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getAllScrapShops();
-                return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n21(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getAllScrapShops();
-            return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n21(this._uploadFile, this._downloadFile, result);
         }
     }
     async getBookingPhase(arg0: BookingStatus): Promise<string> {
         if (this.processError) {
             try {
-                const result = await this.actor.getBookingPhase(to_candid_BookingStatus_n17(this._uploadFile, this._downloadFile, arg0));
+                const result = await this.actor.getBookingPhase(to_candid_BookingStatus_n28(this._uploadFile, this._downloadFile, arg0));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getBookingPhase(to_candid_BookingStatus_n17(this._uploadFile, this._downloadFile, arg0));
+            const result = await this.actor.getBookingPhase(to_candid_BookingStatus_n28(this._uploadFile, this._downloadFile, arg0));
             return result;
         }
     }
@@ -327,56 +432,70 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.getCallerUserProfile();
-                return from_candid_opt_n19(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n30(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getCallerUserProfile();
-            return from_candid_opt_n19(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n30(this._uploadFile, this._downloadFile, result);
         }
     }
     async getCallerUserRole(): Promise<UserRole> {
         if (this.processError) {
             try {
                 const result = await this.actor.getCallerUserRole();
-                return from_candid_UserRole_n20(this._uploadFile, this._downloadFile, result);
+                return from_candid_UserRole_n38(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getCallerUserRole();
-            return from_candid_UserRole_n20(this._uploadFile, this._downloadFile, result);
+            return from_candid_UserRole_n38(this._uploadFile, this._downloadFile, result);
         }
     }
     async getScrapShopByPhone(arg0: string): Promise<ScrapShop | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getScrapShopByPhone(arg0);
-                return from_candid_opt_n22(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n40(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getScrapShopByPhone(arg0);
-            return from_candid_opt_n22(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n40(this._uploadFile, this._downloadFile, result);
         }
     }
     async getUserProfile(arg0: Principal): Promise<UserProfile | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getUserProfile(arg0);
-                return from_candid_opt_n19(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n30(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getUserProfile(arg0);
-            return from_candid_opt_n19(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n30(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getUserProfileById(arg0: string): Promise<UserProfile | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getUserProfileById(arg0);
+                return from_candid_opt_n30(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getUserProfileById(arg0);
+            return from_candid_opt_n30(this._uploadFile, this._downloadFile, result);
         }
     }
     async isCallerAdmin(): Promise<boolean> {
@@ -397,27 +516,27 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.registerScrapShop(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
-                return from_candid_ScrapShop_n11(this._uploadFile, this._downloadFile, result);
+                return from_candid_ScrapShop_n22(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.registerScrapShop(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
-            return from_candid_ScrapShop_n11(this._uploadFile, this._downloadFile, result);
+            return from_candid_ScrapShop_n22(this._uploadFile, this._downloadFile, result);
         }
     }
     async saveCallerUserProfile(arg0: UserProfile): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.saveCallerUserProfile(arg0);
+                const result = await this.actor.saveCallerUserProfile(to_candid_UserProfile_n41(this._uploadFile, this._downloadFile, arg0));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.saveCallerUserProfile(arg0);
+            const result = await this.actor.saveCallerUserProfile(to_candid_UserProfile_n41(this._uploadFile, this._downloadFile, arg0));
             return result;
         }
     }
@@ -425,51 +544,69 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.updateScrapShop(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
-                return from_candid_ScrapShop_n11(this._uploadFile, this._downloadFile, result);
+                return from_candid_ScrapShop_n22(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.updateScrapShop(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
-            return from_candid_ScrapShop_n11(this._uploadFile, this._downloadFile, result);
+            return from_candid_ScrapShop_n22(this._uploadFile, this._downloadFile, result);
         }
     }
     async updateScrapShopStatus(arg0: string, arg1: ScrapShopStatus): Promise<ScrapShop> {
         if (this.processError) {
             try {
-                const result = await this.actor.updateScrapShopStatus(arg0, to_candid_ScrapShopStatus_n23(this._uploadFile, this._downloadFile, arg1));
-                return from_candid_ScrapShop_n11(this._uploadFile, this._downloadFile, result);
+                const result = await this.actor.updateScrapShopStatus(arg0, to_candid_ScrapShopStatus_n44(this._uploadFile, this._downloadFile, arg1));
+                return from_candid_ScrapShop_n22(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.updateScrapShopStatus(arg0, to_candid_ScrapShopStatus_n23(this._uploadFile, this._downloadFile, arg1));
-            return from_candid_ScrapShop_n11(this._uploadFile, this._downloadFile, result);
+            const result = await this.actor.updateScrapShopStatus(arg0, to_candid_ScrapShopStatus_n44(this._uploadFile, this._downloadFile, arg1));
+            return from_candid_ScrapShop_n22(this._uploadFile, this._downloadFile, result);
         }
     }
 }
-function from_candid_LanguageType_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _LanguageType): LanguageType {
-    return from_candid_variant_n14(_uploadFile, _downloadFile, value);
+function from_candid_Address_n35(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Address): Address {
+    return from_candid_record_n36(_uploadFile, _downloadFile, value);
 }
-function from_candid_ScrapShopStatus_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ScrapShopStatus): ScrapShopStatus {
+function from_candid_BookingResponse_n17(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _BookingResponse): BookingResponse {
+    return from_candid_record_n18(_uploadFile, _downloadFile, value);
+}
+function from_candid_LanguageType_n24(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _LanguageType): LanguageType {
+    return from_candid_variant_n25(_uploadFile, _downloadFile, value);
+}
+function from_candid_ScrapShopStatus_n26(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ScrapShopStatus): ScrapShopStatus {
+    return from_candid_variant_n27(_uploadFile, _downloadFile, value);
+}
+function from_candid_ScrapShop_n22(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ScrapShop): ScrapShop {
+    return from_candid_record_n23(_uploadFile, _downloadFile, value);
+}
+function from_candid_ServiceError_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ServiceError): ServiceError {
     return from_candid_variant_n16(_uploadFile, _downloadFile, value);
 }
-function from_candid_ScrapShop_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ScrapShop): ScrapShop {
-    return from_candid_record_n12(_uploadFile, _downloadFile, value);
+function from_candid_UserProfile_n31(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserProfile): UserProfile {
+    return from_candid_record_n32(_uploadFile, _downloadFile, value);
 }
-function from_candid_UserRole_n20(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
-    return from_candid_variant_n21(_uploadFile, _downloadFile, value);
+function from_candid_UserRole_n38(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
+    return from_candid_variant_n39(_uploadFile, _downloadFile, value);
 }
 function from_candid__CaffeineStorageRefillResult_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: __CaffeineStorageRefillResult): _CaffeineStorageRefillResult {
     return from_candid_record_n5(_uploadFile, _downloadFile, value);
 }
-function from_candid_opt_n19(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
+function from_candid_opt_n30(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
+    return value.length === 0 ? null : from_candid_UserProfile_n31(_uploadFile, _downloadFile, value[0]);
+}
+function from_candid_opt_n33(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [string]): string | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_opt_n22(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_ScrapShop]): ScrapShop | null {
-    return value.length === 0 ? null : from_candid_ScrapShop_n11(_uploadFile, _downloadFile, value[0]);
+function from_candid_opt_n37(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [number]): number | null {
+    return value.length === 0 ? null : value[0];
+}
+function from_candid_opt_n40(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_ScrapShop]): ScrapShop | null {
+    return value.length === 0 ? null : from_candid_ScrapShop_n22(_uploadFile, _downloadFile, value[0]);
 }
 function from_candid_opt_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [boolean]): boolean | null {
     return value.length === 0 ? null : value[0];
@@ -477,7 +614,22 @@ function from_candid_opt_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Ar
 function from_candid_opt_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [bigint]): bigint | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_record_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_record_n18(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    bookingId: bigint;
+    partnerId: [] | [bigint];
+    estimatedAmount: number;
+}): {
+    bookingId: bigint;
+    partnerId?: bigint;
+    estimatedAmount: number;
+} {
+    return {
+        bookingId: value.bookingId,
+        partnerId: record_opt_to_undefined(from_candid_opt_n7(_uploadFile, _downloadFile, value.partnerId)),
+        estimatedAmount: value.estimatedAmount
+    };
+}
+function from_candid_record_n23(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     id: string;
     preferredLanguage: _LanguageType;
     ownerName: string;
@@ -508,7 +660,7 @@ function from_candid_record_n12(_uploadFile: (file: ExternalBlob) => Promise<Uin
 } {
     return {
         id: value.id,
-        preferredLanguage: from_candid_LanguageType_n13(_uploadFile, _downloadFile, value.preferredLanguage),
+        preferredLanguage: from_candid_LanguageType_n24(_uploadFile, _downloadFile, value.preferredLanguage),
         ownerName: value.ownerName,
         area: value.area,
         city: value.city,
@@ -517,9 +669,57 @@ function from_candid_record_n12(_uploadFile: (file: ExternalBlob) => Promise<Uin
         shopName: value.shopName,
         phone: value.phone,
         pincode: value.pincode,
-        registrationStatus: from_candid_ScrapShopStatus_n15(_uploadFile, _downloadFile, value.registrationStatus),
+        registrationStatus: from_candid_ScrapShopStatus_n26(_uploadFile, _downloadFile, value.registrationStatus),
         registeredAt: value.registeredAt,
         streetAddress: value.streetAddress
+    };
+}
+function from_candid_record_n32(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    profileImage: [] | [string];
+    name: string;
+    email: [] | [string];
+    addresses: Array<_Address>;
+    phoneNumber: string;
+}): {
+    profileImage?: string;
+    name: string;
+    email?: string;
+    addresses: Array<Address>;
+    phoneNumber: string;
+} {
+    return {
+        profileImage: record_opt_to_undefined(from_candid_opt_n33(_uploadFile, _downloadFile, value.profileImage)),
+        name: value.name,
+        email: record_opt_to_undefined(from_candid_opt_n33(_uploadFile, _downloadFile, value.email)),
+        addresses: from_candid_vec_n34(_uploadFile, _downloadFile, value.addresses),
+        phoneNumber: value.phoneNumber
+    };
+}
+function from_candid_record_n36(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    id: bigint;
+    lat: [] | [number];
+    lng: [] | [number];
+    street: string;
+    city: string;
+    addressLabel: [] | [string];
+    pincode: string;
+}): {
+    id: bigint;
+    lat?: number;
+    lng?: number;
+    street: string;
+    city: string;
+    addressLabel?: string;
+    pincode: string;
+} {
+    return {
+        id: value.id,
+        lat: record_opt_to_undefined(from_candid_opt_n37(_uploadFile, _downloadFile, value.lat)),
+        lng: record_opt_to_undefined(from_candid_opt_n37(_uploadFile, _downloadFile, value.lng)),
+        street: value.street,
+        city: value.city,
+        addressLabel: record_opt_to_undefined(from_candid_opt_n33(_uploadFile, _downloadFile, value.addressLabel)),
+        pincode: value.pincode
     };
 }
 function from_candid_record_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
@@ -535,6 +735,103 @@ function from_candid_record_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint
     };
 }
 function from_candid_variant_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    error: _ServiceError;
+} | {
+    success: _BookingResponse;
+}): {
+    __kind__: "error";
+    error: ServiceError;
+} | {
+    __kind__: "success";
+    success: BookingResponse;
+} {
+    return "error" in value ? {
+        __kind__: "error",
+        error: from_candid_ServiceError_n15(_uploadFile, _downloadFile, value.error)
+    } : "success" in value ? {
+        __kind__: "success",
+        success: from_candid_BookingResponse_n17(_uploadFile, _downloadFile, value.success)
+    } : value;
+}
+function from_candid_variant_n16(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    invalidWeight: number;
+} | {
+    invalidAddress: null;
+} | {
+    unauthorized: null;
+} | {
+    missingItems: null;
+} | {
+    backendError: string;
+} | {
+    invalidCategory: bigint;
+}): {
+    __kind__: "invalidWeight";
+    invalidWeight: number;
+} | {
+    __kind__: "invalidAddress";
+    invalidAddress: null;
+} | {
+    __kind__: "unauthorized";
+    unauthorized: null;
+} | {
+    __kind__: "missingItems";
+    missingItems: null;
+} | {
+    __kind__: "backendError";
+    backendError: string;
+} | {
+    __kind__: "invalidCategory";
+    invalidCategory: bigint;
+} {
+    return "invalidWeight" in value ? {
+        __kind__: "invalidWeight",
+        invalidWeight: value.invalidWeight
+    } : "invalidAddress" in value ? {
+        __kind__: "invalidAddress",
+        invalidAddress: value.invalidAddress
+    } : "unauthorized" in value ? {
+        __kind__: "unauthorized",
+        unauthorized: value.unauthorized
+    } : "missingItems" in value ? {
+        __kind__: "missingItems",
+        missingItems: value.missingItems
+    } : "backendError" in value ? {
+        __kind__: "backendError",
+        backendError: value.backendError
+    } : "invalidCategory" in value ? {
+        __kind__: "invalidCategory",
+        invalidCategory: value.invalidCategory
+    } : value;
+}
+function from_candid_variant_n20(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    ok: null;
+} | {
+    alreadyExists: string;
+} | {
+    invalidId: null;
+}): {
+    __kind__: "ok";
+    ok: null;
+} | {
+    __kind__: "alreadyExists";
+    alreadyExists: string;
+} | {
+    __kind__: "invalidId";
+    invalidId: null;
+} {
+    return "ok" in value ? {
+        __kind__: "ok",
+        ok: value.ok
+    } : "alreadyExists" in value ? {
+        __kind__: "alreadyExists",
+        alreadyExists: value.alreadyExists
+    } : "invalidId" in value ? {
+        __kind__: "invalidId",
+        invalidId: value.invalidId
+    } : value;
+}
+function from_candid_variant_n25(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     en: null;
 } | {
     gu: null;
@@ -585,7 +882,7 @@ function from_candid_variant_n14(_uploadFile: (file: ExternalBlob) => Promise<Ui
         other: value.other
     } : value;
 }
-function from_candid_variant_n16(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_variant_n27(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     pending: null;
 } | {
     approved: null;
@@ -594,7 +891,7 @@ function from_candid_variant_n16(_uploadFile: (file: ExternalBlob) => Promise<Ui
 }): ScrapShopStatus {
     return "pending" in value ? ScrapShopStatus.pending : "approved" in value ? ScrapShopStatus.approved : "rejected" in value ? ScrapShopStatus.rejected : value;
 }
-function from_candid_variant_n21(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_variant_n39(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     admin: null;
 } | {
     user: null;
@@ -603,14 +900,26 @@ function from_candid_variant_n21(_uploadFile: (file: ExternalBlob) => Promise<Ui
 }): UserRole {
     return "admin" in value ? UserRole.admin : "user" in value ? UserRole.user : "guest" in value ? UserRole.guest : value;
 }
-function from_candid_vec_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_ScrapShop>): Array<ScrapShop> {
-    return value.map((x)=>from_candid_ScrapShop_n11(_uploadFile, _downloadFile, x));
+function from_candid_vec_n21(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_ScrapShop>): Array<ScrapShop> {
+    return value.map((x)=>from_candid_ScrapShop_n22(_uploadFile, _downloadFile, x));
 }
-function to_candid_BookingStatus_n17(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: BookingStatus): _BookingStatus {
-    return to_candid_variant_n18(_uploadFile, _downloadFile, value);
+function from_candid_vec_n34(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_Address>): Array<Address> {
+    return value.map((x)=>from_candid_Address_n35(_uploadFile, _downloadFile, x));
 }
-function to_candid_ScrapShopStatus_n23(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: ScrapShopStatus): _ScrapShopStatus {
-    return to_candid_variant_n24(_uploadFile, _downloadFile, value);
+function to_candid_Address_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Address): _Address {
+    return to_candid_record_n13(_uploadFile, _downloadFile, value);
+}
+function to_candid_BookingRequest_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: BookingRequest): _BookingRequest {
+    return to_candid_record_n11(_uploadFile, _downloadFile, value);
+}
+function to_candid_BookingStatus_n28(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: BookingStatus): _BookingStatus {
+    return to_candid_variant_n29(_uploadFile, _downloadFile, value);
+}
+function to_candid_ScrapShopStatus_n44(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: ScrapShopStatus): _ScrapShopStatus {
+    return to_candid_variant_n45(_uploadFile, _downloadFile, value);
+}
+function to_candid_UserProfile_n41(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserProfile): _UserProfile {
+    return to_candid_record_n42(_uploadFile, _downloadFile, value);
 }
 function to_candid_UserRole_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): _UserRole {
     return to_candid_variant_n9(_uploadFile, _downloadFile, value);
@@ -621,6 +930,54 @@ function to_candid__CaffeineStorageRefillInformation_n2(_uploadFile: (file: Exte
 function to_candid_opt_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _CaffeineStorageRefillInformation | null): [] | [__CaffeineStorageRefillInformation] {
     return value === null ? candid_none() : candid_some(to_candid__CaffeineStorageRefillInformation_n2(_uploadFile, _downloadFile, value));
 }
+function to_candid_opt_n19(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Address | null): [] | [_Address] {
+    return value === null ? candid_none() : candid_some(to_candid_Address_n12(_uploadFile, _downloadFile, value));
+}
+function to_candid_record_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    scheduledTime: bigint;
+    address: Address;
+    items: Array<BookingItemRequest>;
+    totalEstimatedAmount: number;
+}): {
+    scheduledTime: bigint;
+    address: _Address;
+    items: Array<_BookingItemRequest>;
+    totalEstimatedAmount: number;
+} {
+    return {
+        scheduledTime: value.scheduledTime,
+        address: to_candid_Address_n12(_uploadFile, _downloadFile, value.address),
+        items: value.items,
+        totalEstimatedAmount: value.totalEstimatedAmount
+    };
+}
+function to_candid_record_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    id: bigint;
+    lat?: number;
+    lng?: number;
+    street: string;
+    city: string;
+    addressLabel?: string;
+    pincode: string;
+}): {
+    id: bigint;
+    lat: [] | [number];
+    lng: [] | [number];
+    street: string;
+    city: string;
+    addressLabel: [] | [string];
+    pincode: string;
+} {
+    return {
+        id: value.id,
+        lat: value.lat ? candid_some(value.lat) : candid_none(),
+        lng: value.lng ? candid_some(value.lng) : candid_none(),
+        street: value.street,
+        city: value.city,
+        addressLabel: value.addressLabel ? candid_some(value.addressLabel) : candid_none(),
+        pincode: value.pincode
+    };
+}
 function to_candid_record_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     proposed_top_up_amount?: bigint;
 }): {
@@ -630,7 +987,28 @@ function to_candid_record_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8A
         proposed_top_up_amount: value.proposed_top_up_amount ? candid_some(value.proposed_top_up_amount) : candid_none()
     };
 }
-function to_candid_variant_n18(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: BookingStatus): {
+function to_candid_record_n42(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    profileImage?: string;
+    name: string;
+    email?: string;
+    addresses: Array<Address>;
+    phoneNumber: string;
+}): {
+    profileImage: [] | [string];
+    name: string;
+    email: [] | [string];
+    addresses: Array<_Address>;
+    phoneNumber: string;
+} {
+    return {
+        profileImage: value.profileImage ? candid_some(value.profileImage) : candid_none(),
+        name: value.name,
+        email: value.email ? candid_some(value.email) : candid_none(),
+        addresses: to_candid_vec_n43(_uploadFile, _downloadFile, value.addresses),
+        phoneNumber: value.phoneNumber
+    };
+}
+function to_candid_variant_n29(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: BookingStatus): {
     on_the_way: null;
 } | {
     cancelled: null;
@@ -661,7 +1039,7 @@ function to_candid_variant_n18(_uploadFile: (file: ExternalBlob) => Promise<Uint
         partner_assigned: null
     } : value;
 }
-function to_candid_variant_n24(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: ScrapShopStatus): {
+function to_candid_variant_n45(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: ScrapShopStatus): {
     pending: null;
 } | {
     approved: null;
@@ -690,6 +1068,9 @@ function to_candid_variant_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8
     } : value == UserRole.guest ? {
         guest: null
     } : value;
+}
+function to_candid_vec_n43(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<Address>): Array<_Address> {
+    return value.map((x)=>to_candid_Address_n12(_uploadFile, _downloadFile, x));
 }
 export interface CreateActorOptions {
     agent?: Agent;

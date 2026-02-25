@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 23,
+  "projectStateVersion": 27,
   "summary": "Bhangar wala is a PWA that connects households with scrap collection partners for doorstep pickup and instant payment. Built with React, Tailwind CSS, Vite, and Supabase. Features phone OTP auth, address management, scrap category selection, booking system, real-time tracking, dynamic pricing, UPI/cash payments, booking history, ratings, push notifications, and customer support. Mobile-first design with green/slate/amber palette. Authentication uses simulated phone OTP flow (Internet Identity migration was attempted but reverted due to mobile connection issues).",
   "architectural_notes": [
     "Tech stack: React + Tailwind CSS + Vite (frontend), Supabase (auth, DB, storage, realtime)",
@@ -13,8 +13,11 @@
     "Mobile-first design, typography: Inter/Poppins headings, system fonts for body",
     "Multilingual support required: Hindi, Marathi, Gujarati, Marwadi, English (i18n/localization layer needed)"
   ],
-  "known_issues": [],
-  "isFixRequest": false,
+  "known_issues": [
+    "Profile saving error reported by user (exact cause unknown, build failed to fix automatically)",
+    "Booking creation error reported on Book Pickup screen (exact cause unknown, under investigation)"
+  ],
+  "isFixRequest": true,
   "existing_features": [
     {
       "id": "feature-apply-a-mobile-first-eco-friendly-visual-theme-across-the-entire-app-using-primary-16a34a-green-secondary-64748b-slate-gray-and-accent-f59e0b-amber-use-inter-or-poppins-for-headings-and-system-fonts-for-body-text-all-screens-must-use-a-bottom-navigation-bar-home-bookings-profile-support-and-a-top-header-with-a-notification-bell-icon-and-location-indicator-design-must-be-optimized-for-touch-interactions-with-large-tap-targets",
@@ -399,6 +402,30 @@
         "REQ-61"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-fix-the-failed-to-save-profile-please-try-again-error-on-the-profile-setup-screen-profile-setup-the-form-collects-full-name-phone-number-pre-filled-from-localstorage-with-format-91xxxxxxxxxx-street-address-city-and-pincode-diagnose-and-fix-the-createuserprofile-backend-call-1-ensure-the-phone-number-passed-as-the-user-id-is-stripped-of-the-country-code-prefix-91-or-handled-correctly-to-match-the-expected-backend-id-format-2-ensure-all-required-fields-name-phone-are-non-empty-before-submission-3-ensure-the-optional-address-fields-street-city-pincode-are-correctly-serialised-as-an-optional-record-pass-null-if-all-address-fields-are-empty-rather-than-an-empty-object-4-wrap-the-actor-call-in-a-proper-try-catch-and-surface-a-descriptive-error-message-if-the-backend-returns-an-error-variant-after-a-successful-save-navigate-to-home-and-write-the-auth-session-to-localstorage",
+      "title": "Fix the 'Failed to save profile. Please try again.' error on the Profile Setup screen (`/profile-setup`). The form collects Full Name, Phone Number (pre-filled from localStorage with format '+91XXXXXXXXXX'), Street Address, City, and Pincode. Diagnose and fix the `createUserProfile` backend call: (1) ensure the phone number passed as the user ID is stripped of the country code prefix ('+91') or handled correctly to match the expected backend ID format; (2) ensure all required fields (name, phone) are non-empty before submission; (3) ensure the optional address fields (street, city, pincode) are correctly serialised as an optional record — pass `null` if all address fields are empty rather than an empty object; (4) wrap the actor call in a proper try/catch and surface a descriptive error message if the backend returns an error variant. After a successful save, navigate to `/home` and write the auth session to localStorage.",
+      "reqIds": [
+        "REQ-62"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-failed-to-save-address-please-try-again-error-on-the-add-address-screen-add-address-diagnose-and-repair-the-addaddress-backend-call-1-ensure-the-userid-passed-to-the-backend-is-correctly-read-from-localstorage-the-stored-phone-number-without-country-code-prefix-if-required-by-backend-2-ensure-all-required-fields-street-city-pincode-are-non-empty-before-submission-3-ensure-the-address-label-defaults-to-a-valid-value-home-work-or-other-if-unset-4-ensure-optional-lat-lng-fields-are-serialised-as-null-when-not-provided-rather-than-as-undefined-or-empty-string-5-wrap-the-actor-call-in-a-proper-try-catch-and-surface-a-descriptive-inline-error-message-after-a-successful-save-navigate-back-to-addresses",
+      "title": "Fix the 'Failed to save address. Please try again.' error on the Add Address screen (`/add-address`). Diagnose and repair the `addAddress` backend call: (1) ensure the userId passed to the backend is correctly read from localStorage (the stored phone number without country code prefix if required by backend); (2) ensure all required fields (street, city, pincode) are non-empty before submission; (3) ensure the address label defaults to a valid value ('Home', 'Work', or 'Other') if unset; (4) ensure optional lat/lng fields are serialised as `null` when not provided rather than as undefined or empty string; (5) wrap the actor call in a proper try/catch and surface a descriptive inline error message. After a successful save, navigate back to `/addresses`.",
+      "reqIds": [
+        "REQ-64"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-booking-creation-error-on-the-book-pickup-screen-book-pickup-diagnose-and-repair-the-createbooking-backend-call-1-ensure-the-userid-passed-to-the-backend-is-the-plain-phone-number-from-localstorage-stripped-of-91-prefix-if-the-backend-expects-a-plain-10-digit-string-2-ensure-the-addressid-references-a-valid-address-that-belongs-to-the-user-if-no-addresses-are-present-block-progression-and-prompt-the-user-to-add-an-address-first-3-ensure-scheduledtime-is-serialised-as-an-integer-timestamp-nanoseconds-or-milliseconds-as-expected-by-the-motoko-backend-and-not-as-a-string-or-iso-date-4-ensure-all-bookingitems-have-valid-categoryid-estimatedweight-a-positive-float-and-that-the-array-is-non-empty-before-submission-5-ensure-totalestimatedamount-is-computed-correctly-as-a-float-and-passed-in-the-expected-motoko-type-6-wrap-the-actor-call-in-a-try-catch-and-surface-a-human-readable-error-message-on-the-step-4-confirm-screen-if-the-backend-returns-an-error-variant-or-throws-after-a-successful-booking-creation-navigate-to-booking-confirmation-with-the-new-booking-id",
+      "title": "Fix the booking creation error on the Book Pickup screen (`/book-pickup`). Diagnose and repair the `createBooking` backend call: (1) ensure the userId passed to the backend is the plain phone number from localStorage (stripped of '+91' prefix if the backend expects a plain 10-digit string); (2) ensure the addressId references a valid address that belongs to the user — if no addresses are present, block progression and prompt the user to add an address first; (3) ensure scheduledTime is serialised as an integer timestamp (nanoseconds or milliseconds as expected by the Motoko backend) and not as a string or ISO date; (4) ensure all BookingItems have valid categoryId, estimatedWeight (a positive Float), and that the array is non-empty before submission; (5) ensure totalEstimatedAmount is computed correctly as a Float and passed in the expected Motoko type; (6) wrap the actor call in a try/catch and surface a human-readable error message on the Step 4 confirm screen if the backend returns an error variant or throws. After a successful booking creation, navigate to `/booking-confirmation` with the new booking ID.",
+      "reqIds": [
+        "REQ-65"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -575,6 +602,28 @@
       "summary": "Extend the backend (backend/main.mo) with a new ScrapShop entity and related methods. Add the ScrapShop data type with fields: id (Text), ownerName (Text), shopName (Text), phone (Text), email (Text), city (Text), area (Text), pincode (Text), streetAddress (Text), scrapCategoriesHandled (array of category IDs), preferredLanguage (Text — one of: 'en', 'hi', 'mr', 'gu', 'mw'), registrationStatus (variant: #pending | #approved | #rejected), registeredAt (Int timestamp). Implement: registerScrapShop(ownerName, shopName, phone, email, city, area, pincode, streetAddress, scrapCategoriesHandled, preferredLanguage) — creates a new shop record with status #pending; getScrapShopByPhone(phone) — returns a shop record by phone; getAllScrapShops() — returns all shop records (admin use); updateScrapShopStatus(id, status) — updates registration status to approved or rejected (admin use); updateScrapShop(id, ownerName, shopName, email, city, area, pincode, streetAddress, scrapCategoriesHandled) — updates shop details.",
       "reqIds": [
         "REQ-42"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-45",
+      "summary": "In `backend/main.mo`, review the `createUserProfile` method signature and ensure it correctly accepts a user ID of type `Text` (the phone number string), a name of type `Text`, and an optional address record. Ensure the method does not reject or trap when called with a phone number that includes the '+91' prefix, and that it returns a success variant (e.g., `#ok`) rather than silently failing or returning an error variant when a valid profile is submitted for the first time.",
+      "reqIds": [
+        "REQ-63"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-46",
+      "summary": "Fix booking creation error on the Book Pickup screen - user reports error when trying to make a booking for scrap pickup",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-49",
+      "summary": "In `backend/main.mo`, audit the `addAddress` and `createBooking` method signatures to verify they accept the argument types that the frontend is sending (Text userId, Float weights, Int timestamps, optional lat/lng as `?Float`). If any parameter types are mismatched or the methods trap on edge-case inputs (empty optional fields, zero weights, addresses without lat/lng), fix the method implementations to handle these gracefully and return a descriptive error variant rather than trapping.",
+      "reqIds": [
+        "REQ-66"
       ],
       "status": "pending"
     }

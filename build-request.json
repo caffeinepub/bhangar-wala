@@ -1,117 +1,81 @@
 {
   "kind": "build_request",
-  "title": "Revert to phone OTP login flow",
+  "title": "Fix booking creation and address saving errors on Book Pickup screen",
   "projectName": "Bhangar Wala",
   "priority": "high",
   "requirements": [
     {
-      "id": "REQ-57",
-      "text": "Restore the Login screen (`/login`) to the original phone OTP flow: display a phone number input field, a country code selector defaulting to +91, a 'Send OTP' button, and a terms & conditions checkbox. On submitting a valid phone number, navigate to `/otp-verification` and store the phone number in component state. Remove the Internet Identity 'Sign In' button and any II-related error/retry UI from this screen.",
+      "id": "REQ-64",
+      "text": "Fix the 'Failed to save address. Please try again.' error on the Add Address screen (`/add-address`). Diagnose and repair the `addAddress` backend call: (1) ensure the userId passed to the backend is correctly read from localStorage (the stored phone number without country code prefix if required by backend); (2) ensure all required fields (street, city, pincode) are non-empty before submission; (3) ensure the address label defaults to a valid value ('Home', 'Work', or 'Other') if unset; (4) ensure optional lat/lng fields are serialised as `null` when not provided rather than as undefined or empty string; (5) wrap the actor call in a proper try/catch and surface a descriptive inline error message. After a successful save, navigate back to `/addresses`.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-4"
+          "msg-1"
         ],
         "quotes": [
-          "Keep phone OTP — no change needed, works as-was."
+          "again showing error while making a booking for scrap pick-up ,please fix it"
         ]
       },
       "acceptanceCriteria": [
-        "The /login route renders a phone number input with country code selector defaulting to +91",
-        "A 'Send OTP' button is present and navigates to /otp-verification on valid phone number submission",
-        "A terms & conditions checkbox is present",
-        "The Internet Identity 'Sign In' button is not present on the login screen",
-        "No II-related error state or retry button is shown on the login screen"
+        "Filling in Street Address, City, and Pincode and tapping 'Save Address' successfully saves the address without showing 'Failed to save address' error",
+        "The userId is correctly derived from localStorage and matches the format expected by the backend addAddress method",
+        "Optional lat/lng fields are passed as null (not undefined or empty string) when not entered",
+        "A descriptive error message is shown inline if the backend call genuinely fails",
+        "On success, the user is navigated back to /addresses and the new address appears in the list"
       ]
     },
     {
-      "id": "REQ-58",
-      "text": "Restore the `/otp-verification` route and the OTP Verification page. The page must render 6 individual digit input boxes, a 60-second countdown timer, a 'Resend OTP' button (enabled only after the timer expires), and a 'Verify' button. On successful verification (accept any 6-digit code), navigate first-time users to `/profile-setup` and returning users to `/home`. Store the auth session in localStorage. Include the helper hint 'Enter any 6-digit code to verify' below the digit input boxes.",
-      "target": "frontend",
+      "id": "REQ-65",
+      "text": "Fix the booking creation error on the Book Pickup screen (`/book-pickup`). Diagnose and repair the `createBooking` backend call: (1) ensure the userId passed to the backend is the plain phone number from localStorage (stripped of '+91' prefix if the backend expects a plain 10-digit string); (2) ensure the addressId references a valid address that belongs to the user — if no addresses are present, block progression and prompt the user to add an address first; (3) ensure scheduledTime is serialised as an integer timestamp (nanoseconds or milliseconds as expected by the Motoko backend) and not as a string or ISO date; (4) ensure all BookingItems have valid categoryId, estimatedWeight (a positive Float), and that the array is non-empty before submission; (5) ensure totalEstimatedAmount is computed correctly as a Float and passed in the expected Motoko type; (6) wrap the actor call in a try/catch and surface a human-readable error message on the Step 4 confirm screen if the backend returns an error variant or throws. After a successful booking creation, navigate to `/booking-confirmation` with the new booking ID.",
+      "target": "both",
       "source": {
         "messageIds": [
-          "msg-4"
+          "msg-1"
         ],
         "quotes": [
-          "Keep phone OTP — no change needed, works as-was."
+          "again showing error while making a booking for scrap pick-up ,please fix it"
         ]
       },
       "acceptanceCriteria": [
-        "The /otp-verification route is registered and accessible",
-        "6 individual digit input boxes are rendered",
-        "A 60-second countdown timer is shown",
-        "The 'Resend OTP' button is disabled until the timer expires",
-        "Submitting any valid 6-digit code navigates to /profile-setup for new users or /home for returning users",
-        "Auth session is saved to localStorage on success",
-        "The helper hint 'Enter any 6-digit code to verify' is visible below the input boxes"
+        "Completing all 4 steps of the Book Pickup flow and tapping 'Confirm Booking' successfully creates a booking in the backend without an error",
+        "The userId is stripped of '+91' prefix to match the backend's expected phone number format",
+        "scheduledTime is passed as a valid integer timestamp in the format expected by the Motoko createBooking method",
+        "BookingItems array contains at least one item with a valid categoryId and a positive estimatedWeight",
+        "totalEstimatedAmount is a valid positive Float",
+        "On success, the user is navigated to /booking-confirmation and the booking ID is displayed",
+        "If the backend returns an error, a descriptive inline error message is shown on the confirmation step"
       ]
     },
     {
-      "id": "REQ-59",
-      "text": "Restore the Profile Setup screen (`/profile-setup`) to use the phone number stored in localStorage (set during OTP login) as the user identifier when calling the backend `createUserProfile` method. Make the phone field on the profile setup form required (not optional), consistent with the phone-OTP-based auth flow.",
-      "target": "frontend",
+      "id": "REQ-66",
+      "text": "In `backend/main.mo`, audit the `addAddress` and `createBooking` method signatures to verify they accept the argument types that the frontend is sending (Text userId, Float weights, Int timestamps, optional lat/lng as `?Float`). If any parameter types are mismatched or the methods trap on edge-case inputs (empty optional fields, zero weights, addresses without lat/lng), fix the method implementations to handle these gracefully and return a descriptive error variant rather than trapping.",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-4"
+          "msg-1"
         ],
         "quotes": [
-          "Keep phone OTP — no change needed, works as-was."
+          "again showing error while making a booking for scrap pick-up ,please fix it"
         ]
       },
       "acceptanceCriteria": [
-        "Profile Setup reads the phone number from localStorage set during OTP verification",
-        "The phone field on the profile setup form is required",
-        "createUserProfile is called with the phone-based user ID, not an Internet Identity principal"
-      ]
-    },
-    {
-      "id": "REQ-60",
-      "text": "Restore the Splash screen (`/splash`) redirect logic to use localStorage session detection (not Internet Identity initialization state) to determine whether to redirect to `/home` (authenticated) or `/login` (unauthenticated).",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-4"
-        ],
-        "quotes": [
-          "Keep phone OTP — no change needed, works as-was."
-        ]
-      },
-      "acceptanceCriteria": [
-        "The splash screen checks localStorage for an auth session",
-        "Authenticated users (session in localStorage) are redirected to /home",
-        "Unauthenticated users are redirected to /login",
-        "The redirect does not depend on Internet Identity initialization"
-      ]
-    },
-    {
-      "id": "REQ-61",
-      "text": "Restore the Profile screen (`/profile`) logout action to clear the localStorage auth session and redirect to `/login`, without calling any Internet Identity logout method.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-4"
-        ],
-        "quotes": [
-          "Keep phone OTP — no change needed, works as-was."
-        ]
-      },
-      "acceptanceCriteria": [
-        "Tapping 'Logout' clears localStorage and redirects to /login",
-        "No Internet Identity logout call is made on the standard user logout action"
+        "addAddress accepts an optional lat/lng (?Float) and does not trap when they are null",
+        "createBooking accepts an Int scheduledTime and does not trap on valid inputs",
+        "createBooking returns an #err variant with a descriptive message rather than trapping when invalid data is provided",
+        "addAddress returns an #err variant with a descriptive message rather than trapping when invalid data is provided",
+        "All method signatures are consistent with what the frontend hooks in useQueries.ts are calling"
       ]
     }
   ],
   "constraints": [
-    "Do not modify any Internet Identity hook files under frontend/src/hooks/useInternetIdentity.ts",
-    "Do not modify frontend/src/main.tsx",
-    "The backend data model and API methods must not change",
-    "Admin, partner panel, and shop registration flows must remain unaffected"
+    "Do not change immutable frontend paths: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui",
+    "Maintain single-actor Motoko architecture — all backend logic stays in backend/main.mo",
+    "Do not alter the existing auth flow (phone OTP with localStorage session)"
   ],
   "nonGoals": [
-    "Any changes to Internet Identity integration",
-    "Any backend schema or data migration",
-    "Changes to the service worker (frontend/public/sw.js) beyond what is needed for the OTP revert",
-    "Changes to admin, partner panel, or scrap shop registration screens"
+    "Redesigning the Book Pickup UI or adding new steps",
+    "Adding real map/GPS functionality",
+    "Changing the payment or tracking flow"
   ],
   "imageRequirements": {
     "required": [],

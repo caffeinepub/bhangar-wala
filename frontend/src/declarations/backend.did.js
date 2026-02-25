@@ -24,6 +24,38 @@ export const UserRole = IDL.Variant({
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
+export const Address = IDL.Record({
+  'id' : IDL.Nat,
+  'lat' : IDL.Opt(IDL.Float64),
+  'lng' : IDL.Opt(IDL.Float64),
+  'street' : IDL.Text,
+  'city' : IDL.Text,
+  'addressLabel' : IDL.Opt(IDL.Text),
+  'pincode' : IDL.Text,
+});
+export const BookingItemRequest = IDL.Record({
+  'categoryId' : IDL.Nat,
+  'estimatedWeight' : IDL.Float64,
+});
+export const BookingRequest = IDL.Record({
+  'scheduledTime' : IDL.Int,
+  'address' : Address,
+  'items' : IDL.Vec(BookingItemRequest),
+  'totalEstimatedAmount' : IDL.Float64,
+});
+export const ServiceError = IDL.Variant({
+  'invalidWeight' : IDL.Float64,
+  'invalidAddress' : IDL.Null,
+  'unauthorized' : IDL.Null,
+  'missingItems' : IDL.Null,
+  'backendError' : IDL.Text,
+  'invalidCategory' : IDL.Nat,
+});
+export const BookingResponse = IDL.Record({
+  'bookingId' : IDL.Nat,
+  'partnerId' : IDL.Opt(IDL.Nat),
+  'estimatedAmount' : IDL.Float64,
+});
 export const LanguageType = IDL.Variant({
   'en' : IDL.Null,
   'gu' : IDL.Null,
@@ -62,10 +94,11 @@ export const BookingStatus = IDL.Variant({
   'partner_assigned' : IDL.Null,
 });
 export const UserProfile = IDL.Record({
-  'id' : IDL.Principal,
-  'profileImage' : IDL.Text,
+  'profileImage' : IDL.Opt(IDL.Text),
   'name' : IDL.Text,
-  'phone' : IDL.Text,
+  'email' : IDL.Opt(IDL.Text),
+  'addresses' : IDL.Vec(Address),
+  'phoneNumber' : IDL.Text,
 });
 
 export const idlService = IDL.Service({
@@ -97,6 +130,22 @@ export const idlService = IDL.Service({
   '_caffeineStorageUpdateGatewayPrincipals' : IDL.Func([], [], []),
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'createBooking' : IDL.Func(
+      [BookingRequest],
+      [IDL.Variant({ 'error' : ServiceError, 'success' : BookingResponse })],
+      [],
+    ),
+  'createUserProfile' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Opt(Address)],
+      [
+        IDL.Variant({
+          'ok' : IDL.Null,
+          'alreadyExists' : IDL.Text,
+          'invalidId' : IDL.Null,
+        }),
+      ],
+      [],
+    ),
   'getAllScrapShops' : IDL.Func([], [IDL.Vec(ScrapShop)], ['query']),
   'getBookingPhase' : IDL.Func([BookingStatus], [IDL.Text], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
@@ -104,6 +153,11 @@ export const idlService = IDL.Service({
   'getScrapShopByPhone' : IDL.Func([IDL.Text], [IDL.Opt(ScrapShop)], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
+      [IDL.Opt(UserProfile)],
+      ['query'],
+    ),
+  'getUserProfileById' : IDL.Func(
+      [IDL.Text],
       [IDL.Opt(UserProfile)],
       ['query'],
     ),
@@ -166,6 +220,38 @@ export const idlFactory = ({ IDL }) => {
     'user' : IDL.Null,
     'guest' : IDL.Null,
   });
+  const Address = IDL.Record({
+    'id' : IDL.Nat,
+    'lat' : IDL.Opt(IDL.Float64),
+    'lng' : IDL.Opt(IDL.Float64),
+    'street' : IDL.Text,
+    'city' : IDL.Text,
+    'addressLabel' : IDL.Opt(IDL.Text),
+    'pincode' : IDL.Text,
+  });
+  const BookingItemRequest = IDL.Record({
+    'categoryId' : IDL.Nat,
+    'estimatedWeight' : IDL.Float64,
+  });
+  const BookingRequest = IDL.Record({
+    'scheduledTime' : IDL.Int,
+    'address' : Address,
+    'items' : IDL.Vec(BookingItemRequest),
+    'totalEstimatedAmount' : IDL.Float64,
+  });
+  const ServiceError = IDL.Variant({
+    'invalidWeight' : IDL.Float64,
+    'invalidAddress' : IDL.Null,
+    'unauthorized' : IDL.Null,
+    'missingItems' : IDL.Null,
+    'backendError' : IDL.Text,
+    'invalidCategory' : IDL.Nat,
+  });
+  const BookingResponse = IDL.Record({
+    'bookingId' : IDL.Nat,
+    'partnerId' : IDL.Opt(IDL.Nat),
+    'estimatedAmount' : IDL.Float64,
+  });
   const LanguageType = IDL.Variant({
     'en' : IDL.Null,
     'gu' : IDL.Null,
@@ -204,10 +290,11 @@ export const idlFactory = ({ IDL }) => {
     'partner_assigned' : IDL.Null,
   });
   const UserProfile = IDL.Record({
-    'id' : IDL.Principal,
-    'profileImage' : IDL.Text,
+    'profileImage' : IDL.Opt(IDL.Text),
     'name' : IDL.Text,
-    'phone' : IDL.Text,
+    'email' : IDL.Opt(IDL.Text),
+    'addresses' : IDL.Vec(Address),
+    'phoneNumber' : IDL.Text,
   });
   
   return IDL.Service({
@@ -239,6 +326,22 @@ export const idlFactory = ({ IDL }) => {
     '_caffeineStorageUpdateGatewayPrincipals' : IDL.Func([], [], []),
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'createBooking' : IDL.Func(
+        [BookingRequest],
+        [IDL.Variant({ 'error' : ServiceError, 'success' : BookingResponse })],
+        [],
+      ),
+    'createUserProfile' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Opt(Address)],
+        [
+          IDL.Variant({
+            'ok' : IDL.Null,
+            'alreadyExists' : IDL.Text,
+            'invalidId' : IDL.Null,
+          }),
+        ],
+        [],
+      ),
     'getAllScrapShops' : IDL.Func([], [IDL.Vec(ScrapShop)], ['query']),
     'getBookingPhase' : IDL.Func([BookingStatus], [IDL.Text], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
@@ -250,6 +353,11 @@ export const idlFactory = ({ IDL }) => {
       ),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
+        [IDL.Opt(UserProfile)],
+        ['query'],
+      ),
+    'getUserProfileById' : IDL.Func(
+        [IDL.Text],
         [IDL.Opt(UserProfile)],
         ['query'],
       ),

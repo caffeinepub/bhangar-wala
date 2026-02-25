@@ -1,170 +1,101 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { ArrowLeft, HeadphonesIcon, CheckCircle2, Clock } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { ArrowLeft, Loader2, MessageSquare } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { toast } from 'sonner';
-import { useGetAllSupportTickets, useUpdateSupportTicketStatus, TicketStatus } from '../hooks/useQueries';
-import type { SupportTicket } from '../hooks/useQueries';
+import {
+  useGetAllSupportTickets,
+  useUpdateSupportTicketStatus,
+} from '../hooks/useQueries';
+import type { SupportTicket, TicketStatus } from '../hooks/useQueries';
 
-function formatRelativeTime(ts: bigint): string {
-  const now = Date.now();
-  const ticketMs = Number(ts) / 1_000_000;
-  const diffMs = now - ticketMs;
-  const diffSec = Math.floor(diffMs / 1000);
-  if (diffSec < 60) return 'just now';
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
-  const diffDay = Math.floor(diffHr / 24);
-  if (diffDay < 30) return `${diffDay}d ago`;
-  return new Date(ticketMs).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
-function TicketCard({
-  ticket,
-  onToggle,
-  isToggling,
-}: {
-  ticket: SupportTicket;
-  onToggle: (id: bigint, current: TicketStatus) => void;
-  isToggling: boolean;
-}) {
-  const isResolved = ticket.status === TicketStatus.resolved;
-
-  return (
-    <div className={`bg-card rounded-2xl border p-4 transition-all ${isResolved ? 'border-border opacity-70' : 'border-primary/30'}`}>
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <div className="flex items-center gap-2">
-          {isResolved ? (
-            <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
-          ) : (
-            <Clock className="w-4 h-4 text-amber-500 shrink-0" />
-          )}
-          <span
-            className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-              isResolved
-                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-            }`}
-          >
-            {isResolved ? 'Resolved' : 'Open'}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-xs text-muted-foreground">{formatRelativeTime(ticket.timestamp)}</span>
-          <Switch
-            checked={isResolved}
-            onCheckedChange={() => onToggle(ticket.id, ticket.status)}
-            disabled={isToggling}
-          />
-        </div>
-      </div>
-
-      <p className="font-semibold text-sm text-foreground mb-1">{ticket.subject}</p>
-      <p className="text-xs text-muted-foreground line-clamp-3">{ticket.message}</p>
-
-      <div className="mt-3 pt-3 border-t border-border">
-        <p className="text-xs text-muted-foreground">
-          Ticket #{ticket.id.toString()} · User: {ticket.userId.toString().slice(0, 12)}…
-        </p>
-      </div>
-    </div>
-  );
-}
+const STATUS_FILTERS: Array<'All' | TicketStatus> = ['All', 'open', 'resolved'];
 
 export default function AdminSupportTickets() {
   const navigate = useNavigate();
   const { data: tickets = [], isLoading } = useGetAllSupportTickets();
   const updateStatus = useUpdateSupportTicketStatus();
-  const [filter, setFilter] = useState<'all' | 'open' | 'resolved'>('all');
+  const [filter, setFilter] = useState<'All' | TicketStatus>('All');
 
-  const sorted = [...tickets].sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
+  const filtered = filter === 'All' ? tickets : tickets.filter((t) => t.status === filter);
 
-  const filtered = sorted.filter((t) => {
-    if (filter === 'open') return t.status === TicketStatus.open;
-    if (filter === 'resolved') return t.status === TicketStatus.resolved;
-    return true;
-  });
+  async function handleToggle(ticket: SupportTicket) {
+    const newStatus: TicketStatus = ticket.status === 'open' ? 'resolved' : 'open';
+    await updateStatus.mutateAsync({ id: ticket.id, status: newStatus });
+  }
 
-  const openCount = tickets.filter((t) => t.status === TicketStatus.open).length;
-
-  const handleToggle = async (id: bigint, current: TicketStatus) => {
-    const newStatus = current === TicketStatus.open ? TicketStatus.resolved : TicketStatus.open;
-    try {
-      await updateStatus.mutateAsync({ id, status: newStatus });
-      toast.success(`Ticket marked as ${newStatus === TicketStatus.resolved ? 'resolved' : 'open'}`);
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to update ticket');
-    }
-  };
+  function formatDate(ts: number) {
+    return new Date(ts).toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
-      {/* Header */}
-      <div
-        className="px-4 pt-4 pb-6"
-        style={{ background: 'linear-gradient(135deg, oklch(0.35 0.12 150) 0%, oklch(0.25 0.10 200) 100%)' }}
-      >
-        <button
-          onClick={() => navigate({ to: '/admin' })}
-          className="p-2 rounded-full bg-white/20 text-white min-w-[44px] min-h-[44px] flex items-center justify-center mb-3"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <h1 className="font-heading text-xl font-bold text-white">Support Tickets</h1>
-        <p className="text-white/70 text-sm">
-          {openCount} open · {tickets.length} total
-        </p>
+    <div className="min-h-screen bg-background flex flex-col">
+      <header className="bg-primary text-primary-foreground px-4 pt-12 pb-4">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate({ to: '/admin' })}>
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+          <h1 className="text-xl font-bold">Support Tickets</h1>
+        </div>
+      </header>
+
+      {/* Filter chips */}
+      <div className="flex gap-2 px-4 py-3 border-b border-border overflow-x-auto">
+        {STATUS_FILTERS.map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+              filter === f
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            }`}
+          >
+            {f === 'All' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
+          </button>
+        ))}
       </div>
 
-      <div className="flex-1 px-4 py-4 space-y-4">
-        {/* Filter Chips */}
-        <div className="flex gap-2">
-          {(['all', 'open', 'resolved'] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition-colors capitalize ${
-                filter === f
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-card text-muted-foreground border-border hover:border-primary/50'
-              }`}
-            >
-              {f}
-            </button>
-          ))}
-        </div>
-
-        {/* Tickets List */}
+      <main className="flex-1 overflow-y-auto px-4 py-4">
         {isLoading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-32 rounded-2xl" />
-            ))}
+          <div className="flex justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <HeadphonesIcon className="w-12 h-12 text-muted-foreground/40 mb-3" />
-            <p className="text-sm font-medium text-muted-foreground">No tickets found</p>
-            <p className="text-xs text-muted-foreground/70 mt-1">
-              {filter !== 'all' ? 'Try switching the filter' : 'No support tickets yet'}
-            </p>
+          <div className="text-center py-12">
+            <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+            <p className="text-muted-foreground">No tickets found.</p>
           </div>
         ) : (
           <div className="space-y-3">
             {filtered.map((ticket) => (
-              <TicketCard
-                key={ticket.id.toString()}
-                ticket={ticket}
-                onToggle={handleToggle}
-                isToggling={updateStatus.isPending}
-              />
+              <div key={ticket.id} className="bg-card rounded-xl border border-border p-4">
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-foreground truncate">{ticket.subject}</p>
+                    <p className="text-xs text-muted-foreground">{formatDate(ticket.timestamp)}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge variant={ticket.status === 'open' ? 'default' : 'secondary'}>
+                      {ticket.status === 'open' ? 'Open' : 'Resolved'}
+                    </Badge>
+                    <Switch
+                      checked={ticket.status === 'resolved'}
+                      onCheckedChange={() => handleToggle(ticket)}
+                      disabled={updateStatus.isPending}
+                    />
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground line-clamp-2">{ticket.message}</p>
+              </div>
             ))}
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

@@ -74,7 +74,7 @@ export default function Profile() {
             ) : (
               <>
                 <p className="font-heading font-bold text-white text-lg">{profile?.name || 'User'}</p>
-                <p className="text-white/70 text-sm">{profile?.phone || ''}</p>
+                <p className="text-white/70 text-sm">{profile?.phoneNumber || ''}</p>
               </>
             )}
           </div>

@@ -2,10 +2,11 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-restore-the-login-screen-login-to-the-original-phone-otp-flow-display-a-phone-number-input-field-a-country-code-selector-defaulting-to-91-a-send-otp-button-and-a-terms-conditions-checkbox-on-submitting-a-valid-phone-number-navigate-to-otp-verification-and-store-the-phone-number-in-component-state-remove-the-internet-identity-sign-in-button-and-any-ii-related-error-retry-ui-from-this-screen",
-      "featureTitle": "Restore the Login screen (`/login`) to the original phone OTP flow: display a phone number input field, a country code selector defaulting to +91, a 'Send OTP' button, and a terms & conditions checkbox. On submitting a valid phone number, navigate to `/otp-verification` and store the phone number in component state. Remove the Internet Identity 'Sign In' button and any II-related error/retry UI from this screen.",
+      "featureId": "feature-fix-the-failed-to-save-address-please-try-again-error-on-the-add-address-screen-add-address-diagnose-and-repair-the-addaddress-backend-call-1-ensure-the-userid-passed-to-the-backend-is-correctly-read-from-localstorage-the-stored-phone-number-without-country-code-prefix-if-required-by-backend-2-ensure-all-required-fields-street-city-pincode-are-non-empty-before-submission-3-ensure-the-address-label-defaults-to-a-valid-value-home-work-or-other-if-unset-4-ensure-optional-lat-lng-fields-are-serialised-as-null-when-not-provided-rather-than-as-undefined-or-empty-string-5-wrap-the-actor-call-in-a-proper-try-catch-and-surface-a-descriptive-inline-error-message-after-a-successful-save-navigate-back-to-addresses",
+      "featureTitle": "Fix the 'Failed to save address. Please try again.' error on the Add Address screen (`/add-address`). Diagnose and repair the `addAddress` backend call: (1) ensure the userId passed to the backend is correctly read from localStorage (the stored phone number without country code prefix if required by backend); (2) ensure all required fields (street, city, pincode) are non-empty before submission; (3) ensure the address label defaults to a valid value ('Home', 'Work', or 'Other') if unset; (4) ensure optional lat/lng fields are serialised as `null` when not provided rather than as undefined or empty string; (5) wrap the actor call in a proper try/catch and surface a descriptive inline error message. After a successful save, navigate back to `/addresses`.",
       "files": [
-        "frontend/src/pages/Login.tsx"
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/pages/AddAddress.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -17,16 +18,16 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-57"
+        "REQ-64"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-restore-the-otp-verification-route-and-the-otp-verification-page-the-page-must-render-6-individual-digit-input-boxes-a-60-second-countdown-timer-a-resend-otp-button-enabled-only-after-the-timer-expires-and-a-verify-button-on-successful-verification-accept-any-6-digit-code-navigate-first-time-users-to-profile-setup-and-returning-users-to-home-store-the-auth-session-in-localstorage-include-the-helper-hint-enter-any-6-digit-code-to-verify-below-the-digit-input-boxes",
-      "featureTitle": "Restore the `/otp-verification` route and the OTP Verification page. The page must render 6 individual digit input boxes, a 60-second countdown timer, a 'Resend OTP' button (enabled only after the timer expires), and a 'Verify' button. On successful verification (accept any 6-digit code), navigate first-time users to `/profile-setup` and returning users to `/home`. Store the auth session in localStorage. Include the helper hint 'Enter any 6-digit code to verify' below the digit input boxes.",
+      "featureId": "feature-fix-the-booking-creation-error-on-the-book-pickup-screen-book-pickup-diagnose-and-repair-the-createbooking-backend-call-1-ensure-the-userid-passed-to-the-backend-is-the-plain-phone-number-from-localstorage-stripped-of-91-prefix-if-the-backend-expects-a-plain-10-digit-string-2-ensure-the-addressid-references-a-valid-address-that-belongs-to-the-user-if-no-addresses-are-present-block-progression-and-prompt-the-user-to-add-an-address-first-3-ensure-scheduledtime-is-serialised-as-an-integer-timestamp-nanoseconds-or-milliseconds-as-expected-by-the-motoko-backend-and-not-as-a-string-or-iso-date-4-ensure-all-bookingitems-have-valid-categoryid-estimatedweight-a-positive-float-and-that-the-array-is-non-empty-before-submission-5-ensure-totalestimatedamount-is-computed-correctly-as-a-float-and-passed-in-the-expected-motoko-type-6-wrap-the-actor-call-in-a-try-catch-and-surface-a-human-readable-error-message-on-the-step-4-confirm-screen-if-the-backend-returns-an-error-variant-or-throws-after-a-successful-booking-creation-navigate-to-booking-confirmation-with-the-new-booking-id",
+      "featureTitle": "Fix the booking creation error on the Book Pickup screen (`/book-pickup`). Diagnose and repair the `createBooking` backend call: (1) ensure the userId passed to the backend is the plain phone number from localStorage (stripped of '+91' prefix if the backend expects a plain 10-digit string); (2) ensure the addressId references a valid address that belongs to the user — if no addresses are present, block progression and prompt the user to add an address first; (3) ensure scheduledTime is serialised as an integer timestamp (nanoseconds or milliseconds as expected by the Motoko backend) and not as a string or ISO date; (4) ensure all BookingItems have valid categoryId, estimatedWeight (a positive Float), and that the array is non-empty before submission; (5) ensure totalEstimatedAmount is computed correctly as a Float and passed in the expected Motoko type; (6) wrap the actor call in a try/catch and surface a human-readable error message on the Step 4 confirm screen if the backend returns an error variant or throws. After a successful booking creation, navigate to `/booking-confirmation` with the new booking ID.",
       "files": [
-        "frontend/src/App.tsx",
-        "frontend/src/pages/OtpVerification.tsx"
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/pages/BookPickup.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -38,67 +39,7 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-58"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-restore-the-profile-setup-screen-profile-setup-to-use-the-phone-number-stored-in-localstorage-set-during-otp-login-as-the-user-identifier-when-calling-the-backend-createuserprofile-method-make-the-phone-field-on-the-profile-setup-form-required-not-optional-consistent-with-the-phone-otp-based-auth-flow",
-      "featureTitle": "Restore the Profile Setup screen (`/profile-setup`) to use the phone number stored in localStorage (set during OTP login) as the user identifier when calling the backend `createUserProfile` method. Make the phone field on the profile setup form required (not optional), consistent with the phone-OTP-based auth flow.",
-      "files": [
-        "frontend/src/pages/ProfileSetup.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "blob-storage@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-59"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-restore-the-splash-screen-splash-redirect-logic-to-use-localstorage-session-detection-not-internet-identity-initialization-state-to-determine-whether-to-redirect-to-home-authenticated-or-login-unauthenticated",
-      "featureTitle": "Restore the Splash screen (`/splash`) redirect logic to use localStorage session detection (not Internet Identity initialization state) to determine whether to redirect to `/home` (authenticated) or `/login` (unauthenticated).",
-      "files": [
-        "frontend/src/pages/Splash.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "blob-storage@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-60"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-restore-the-profile-screen-profile-logout-action-to-clear-the-localstorage-auth-session-and-redirect-to-login-without-calling-any-internet-identity-logout-method",
-      "featureTitle": "Restore the Profile screen (`/profile`) logout action to clear the localStorage auth session and redirect to `/login`, without calling any Internet Identity logout method.",
-      "files": [
-        "frontend/src/pages/Profile.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "blob-storage@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-61"
+        "REQ-65"
       ],
       "confidence": "high"
     }

@@ -1,13 +1,16 @@
 import Map "mo:core/Map";
 import Array "mo:core/Array";
 import Time "mo:core/Time";
-import Nat "mo:core/Nat";
 import Runtime "mo:core/Runtime";
+import Nat "mo:core/Nat";
+import Text "mo:core/Text";
 import Principal "mo:core/Principal";
 import MixinStorage "blob-storage/Mixin";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
+import Migration "migration";
 
+(with migration = Migration.run)
 actor {
   // ── Access Control ──────────────────────────────────────────────
   let accessControlState = AccessControl.initState();
@@ -17,19 +20,19 @@ actor {
 
   // ── Types ───────────────────────────────────────────────────────
   public type UserProfile = {
-    id : Principal;
-    phone : Text;
+    phoneNumber : Text;
     name : Text;
-    profileImage : Text;
+    profileImage : ?Text;
+    email : ?Text;
+    addresses : [Address];
   };
 
   public type Address = {
     id : Nat;
-    userId : Principal;
-    addressLabel : Text;
     street : Text;
     city : Text;
     pincode : Text;
+    addressLabel : ?Text;
     lat : ?Float;
     lng : ?Float;
   };
@@ -66,6 +69,7 @@ actor {
     partnerId : ?Nat;
     totalEstimatedAmount : Float;
     totalFinalAmount : ?Float;
+    address : Address;
   };
 
   public type BookingItem = {
@@ -183,8 +187,35 @@ actor {
     registeredAt : Int;
   };
 
+  public type BookingItemRequest = {
+    categoryId : Nat;
+    estimatedWeight : Float;
+  };
+
+  public type BookingRequest = {
+    address : Address;
+    scheduledTime : Int;
+    items : [BookingItemRequest];
+    totalEstimatedAmount : Float;
+  };
+
+  public type BookingResponse = {
+    bookingId : Nat;
+    partnerId : ?Nat;
+    estimatedAmount : Float;
+  };
+
+  public type ServiceError = {
+    #invalidAddress;
+    #missingItems;
+    #invalidCategory : Nat;
+    #invalidWeight : Float;
+    #backendError : Text;
+    #unauthorized;
+  };
+
   // ── State ────────────────────────────────────────────────────────
-  var userProfiles = Map.empty<Principal, UserProfile>();
+  var userProfiles = Map.empty<Text, UserProfile>();
   var addresses = Map.empty<Nat, Address>();
   var scrapCategories = Map.empty<Nat, ScrapCategory>();
   var scrapRates = Map.empty<Nat, ScrapRate>();
@@ -207,6 +238,7 @@ actor {
   var nextScrapShopId : Nat = 1;
 
   // ── Booking Phase & Seed Data ─────────────────────────────────────
+
   public query func getBookingPhase(status : BookingStatus) : async Text {
     switch (status) {
       case (#pending) { "pending" };
@@ -220,6 +252,7 @@ actor {
   };
 
   // Initialize seed data for scrap categories, rates, and partners.
+
   scrapCategories := Map.empty<Nat, ScrapCategory>();
   scrapCategories.add(
     1,
@@ -455,28 +488,201 @@ actor {
 
   // ── User Profile Management ──────────────────────────────────────
 
+  // createUserProfile is open to any caller (including guests/anonymous).
+  // This is the initial registration step where a user provides their phone
+  // number as userId. No role check is applied because the user does not yet
+  // have a role at registration time.
+  public shared ({ caller }) func createUserProfile(
+    userId : Text,
+    name : Text,
+    address : ?Address,
+  ) : async {
+    #ok;
+    #alreadyExists : Text;
+    #invalidId;
+  } {
+    if (userId == "") {
+      return #invalidId;
+    };
+
+    let defaultProfileImage = "";
+
+    // Check if a user profile with the given userId already exists
+    let exists = userProfiles.entries().any(
+      func((key, _profile)) { Text.compare(key, userId) == #equal }
+    );
+
+    if (exists) {
+      return #alreadyExists("User profile already exists for id " # userId);
+    };
+
+    let newUserProfile : UserProfile = {
+      phoneNumber = userId;
+      name;
+      profileImage = ?defaultProfileImage;
+      email = null;
+      addresses = [];
+    };
+
+    userProfiles.add(userId, newUserProfile);
+
+    switch (address) {
+      case (null) {
+        return #ok;
+      };
+      case (?addr) {
+        let newAddressesArray = [addr];
+        let updatedProfile = { newUserProfile with addresses = newAddressesArray };
+        userProfiles.add(userId, updatedProfile);
+        return #ok;
+      };
+    };
+  };
+
+  // getCallerUserProfile returns the profile for the currently authenticated caller.
+  // Requires the caller to have at least the #user role.
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can get their profile");
-    } else {
-      userProfiles.get(caller);
+      Runtime.trap("Unauthorized: Only users can retrieve their own profile");
     };
+    let callerText = caller.toText();
+    userProfiles.get(callerText);
   };
 
-  public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
-    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Can only view your own profile");
-    } else {
-      userProfiles.get(user);
-    };
-  };
-
+  // saveCallerUserProfile saves/updates the profile for the currently authenticated caller.
+  // Requires the caller to have at least the #user role.
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can save profiles");
-    } else {
-      userProfiles.add(caller, profile);
+      Runtime.trap("Unauthorized: Only users can save their own profile");
     };
+    let callerText = caller.toText();
+    userProfiles.add(callerText, profile);
+  };
+
+  // getUserProfile returns a user profile by Principal.
+  // The caller may only retrieve their own profile unless they are an admin.
+  public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
+    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: You can only view your own profile");
+    };
+    let userText = user.toText();
+    userProfiles.get(userText);
+  };
+
+  // getUserProfileById returns a user profile by phone-number ID.
+  // Only the owner (whose profile phoneNumber matches the requested ID) or
+  // an admin may retrieve a profile.
+  public query ({ caller }) func getUserProfileById(_id : Text) : async ?UserProfile {
+    // Admins may look up any profile.
+    if (AccessControl.isAdmin(accessControlState, caller)) {
+      return userProfiles.get(_id);
+    };
+
+    // Non-admin callers may only retrieve their own profile.
+    switch (userProfiles.get(_id)) {
+      case (null) {
+        return null;
+      };
+      case (?profile) {
+        let callerText = caller.toText();
+        if (callerText == _id or callerText == profile.phoneNumber) {
+          return ?profile;
+        };
+        Runtime.trap("Unauthorized: You can only view your own profile");
+      };
+    };
+  };
+
+  // ── Booking Management ───────────────────────────────────────────
+
+  // createBooking requires the caller to have at least the #user role.
+  // Anonymous/guest callers are not permitted to create bookings.
+  public shared ({ caller }) func createBooking(
+    bookingRequest : BookingRequest,
+  ) : async {
+    #success : BookingResponse;
+    #error : ServiceError;
+  } {
+    // Only authenticated users (not guests/anonymous) may create bookings.
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      return #error(#unauthorized);
+    };
+
+    // Validate the address data.
+    if (not checkAddressValid(bookingRequest.address)) {
+      return #error(#invalidAddress);
+    };
+
+    // Validate there are items.
+    if (bookingRequest.items.size() == 0) {
+      return #error(#missingItems);
+    };
+
+    // Validate items point to valid categories and have positive weight.
+    for (item in bookingRequest.items.values()) {
+      if (item.estimatedWeight <= 0) {
+        return #error(#invalidWeight(item.estimatedWeight));
+      };
+      switch (scrapCategories.get(item.categoryId)) {
+        case (null) {
+          return #error(#invalidCategory(item.categoryId));
+        };
+        case (?_cat) {};
+      };
+    };
+
+    // Convert validated items into BookingItems.
+    let validatedBookingItems = bookingRequest.items.map(
+      func(item) {
+        nextBookingItemId += 1;
+        {
+          id = nextBookingItemId;
+          bookingId = nextBookingId;
+          categoryId = item.categoryId;
+          estimatedWeight = item.estimatedWeight;
+          finalWeight = null;
+        };
+      }
+    );
+
+    // Create the Booking.
+    let newBooking : Booking = {
+      id = nextBookingId;
+      userId = caller;
+      addressId = 0; // This field is not used but required by the Booking type.
+      status = #pending;
+      scheduledTime = bookingRequest.scheduledTime;
+      partnerId = null;
+      totalEstimatedAmount = bookingRequest.totalEstimatedAmount;
+      totalFinalAmount = null;
+      address = bookingRequest.address;
+    };
+
+    bookings.add(nextBookingId, newBooking);
+
+    // Add all validated booking items to the bookingItems map.
+    for (item in validatedBookingItems.values()) {
+      bookingItems.add(item.id, item);
+    };
+
+    nextBookingId += 1;
+
+    // Compose the response.
+    #success({
+      bookingId = newBooking.id;
+      partnerId = newBooking.partnerId;
+      estimatedAmount = bookingRequest.totalEstimatedAmount;
+    });
+  };
+
+  // checkAddressValid validates that an address has the minimum required fields.
+  // lat/lng are optional — their absence does not invalidate the address.
+  func checkAddressValid(a : Address) : Bool {
+    // Address must have non-empty street, city, and pincode.
+    if (a.street.size() == 0 or a.city.size() == 0 or a.pincode.size() == 0) {
+      return false;
+    };
+    true;
   };
 
   // ── Scrap Shop Management ────────────────────────────────────────

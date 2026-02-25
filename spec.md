@@ -1,13 +1,12 @@
 # Specification
 
 ## Summary
-**Goal:** Revert the authentication flow back to phone OTP login, removing Internet Identity (II) integration from all user-facing screens.
+**Goal:** Fix booking creation and address saving errors in the Bhangar Wala app so users can successfully add addresses and create scrap pickup bookings.
 
 **Planned changes:**
-- Restore the `/login` screen with a phone number input, country code selector (defaulting to +91), "Send OTP" button, and terms & conditions checkbox; remove the II "Sign In" button and any II-related error/retry UI
-- Restore the `/otp-verification` page with 6 individual digit input boxes, a 60-second countdown timer, a "Resend OTP" button (enabled only after timer expires), a "Verify" button, and a helper hint; navigate new users to `/profile-setup` and returning users to `/home` on success; save auth session to localStorage
-- Restore `/profile-setup` to read the phone number from localStorage as the user identifier and make the phone field required when calling `createUserProfile`
-- Restore the `/splash` screen redirect logic to use localStorage session detection (redirect to `/home` if authenticated, `/login` if not) instead of II initialization state
-- Restore the `/profile` logout action to clear localStorage and redirect to `/login` without calling any II logout method
+- Fix the `addAddress` frontend call: correctly read userId from localStorage (plain phone number without country code), ensure required fields (street, city, pincode) are validated before submission, default address label to a valid value if unset, serialize optional lat/lng as `null` instead of undefined/empty string, and navigate to `/addresses` on success
+- Fix the `createBooking` frontend call: strip '+91' prefix from userId, block progression if no addresses exist, serialize `scheduledTime` as an integer timestamp, ensure BookingItems array is non-empty with valid categoryId and positive estimatedWeight, compute `totalEstimatedAmount` as a valid Float, and navigate to `/booking-confirmation` on success
+- Add proper try/catch error handling on both frontend calls with descriptive inline error messages shown to the user on failure
+- Audit and fix `addAddress` and `createBooking` backend method signatures in `backend/main.mo` to accept the correct types (Text userId, Float weights, Int timestamps, `?Float` for optional lat/lng), handle edge-case inputs gracefully, and return descriptive `#err` variants instead of trapping
 
-**User-visible outcome:** Users can log in using their phone number and OTP as before, with session management handled via localStorage throughout the app.
+**User-visible outcome:** Users can successfully save a new address on the Add Address screen and complete the full Book Pickup flow without errors, with the new booking appearing on the confirmation screen.
