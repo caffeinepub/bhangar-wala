@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { useGetScrapRatesWithCategories, useUpdateScrapRate } from '../hooks/useQueries';
-import type { ScrapRateWithCategory } from '../backend';
+import type { ScrapRateWithCategory } from '../hooks/useQueries';
 
 function RateRow({ rate }: { rate: ScrapRateWithCategory }) {
   const [price, setPrice] = useState(rate.pricePerKg.toString());

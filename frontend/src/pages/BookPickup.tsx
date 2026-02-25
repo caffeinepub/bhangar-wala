@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useGetAddresses, useGetScrapCategories, useGetScrapRates, useCreateBooking, useAddBookingItem } from '../hooks/useQueries';
-import type { Address, ScrapCategory } from '../backend';
+import type { Address, ScrapCategory } from '../hooks/useQueries';
 
 const TIME_SLOTS = [
   { id: '9-11', label: '9:00 AM – 11:00 AM' },

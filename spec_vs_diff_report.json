@@ -1,54 +1,49 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-24T14:33:29.431Z",
-  "summary": "The diff shows modifications to backend/main.mo (Motoko canister code), frontend page/component files (via frontend-file-summaries.txt), frontend/public/sw.js (service worker), and project_state.json. These changes appear to be feature/bug-fix work rather than mainnet deployment configuration. There is no evidence of deployment configuration files (dfx.json mainnet network settings, canister IDs for mainnet, deploy scripts, CI/CD pipeline changes, or any ic-deployment artifacts) being added or modified. The service worker update (sw.js) partially addresses the PWA manifest/service worker requirement, but the core deployment infrastructure changes are absent.",
+  "generatedAt": "2026-02-25T06:30:16.193Z",
+  "summary": "The diff implements most of the Internet Identity authentication switch requirements. REQ-47 and REQ-51 appear well-implemented. However, several key files (Splash, Layout, Profile, useQueries) are not present in the modified files list, leaving REQ-48, REQ-49, REQ-50, and REQ-52 unconfirmed or missing.",
   "missing_requirements": [
     {
-      "id": "REQ-35",
-      "requirement": "Deploy the backend Motoko canister to the IC mainnet so all existing API methods are callable.",
-      "reason": "No dfx.json mainnet network configuration, canister_ids.json, deploy scripts, or CI/CD pipeline changes targeting mainnet are present in the diff. backend/main.mo was modified but no deployment artifacts or configuration targeting mainnet were added.",
+      "id": "REQ-48",
+      "requirement": "Update the Splash screen to determine authentication state using the useInternetIdentity hook instead of localStorage.",
+      "reason": "No changes to frontend/src/pages/Splash.tsx are visible in the diff. The file does not appear in the modified files list and the file summaries do not mention it being updated.",
       "evidence": [
-        "backend/main.mo"
+        "frontend-file-summaries.txt"
       ]
     },
     {
-      "id": "REQ-35",
-      "requirement": "Deploy the frontend React PWA to the IC mainnet and make it accessible via a public https://<canister-id>.icp0.io URL.",
-      "reason": "No dfx.json frontend canister configuration for mainnet, no canister_ids.json, no build/deploy scripts targeting IC mainnet, and no evidence of frontend asset canister deployment setup are present in the diff.",
+      "id": "REQ-49",
+      "requirement": "Update the Logout button on the Profile screen to call the logout method from useInternetIdentity hook instead of clearing localStorage.",
+      "reason": "frontend/src/pages/Profile.tsx does not appear in the modified files list. The existing file summary mentions logout functionality but does not confirm it was updated to use the Internet Identity logout method.",
+      "evidence": [
+        "frontend-file-summaries.txt"
+      ]
+    },
+    {
+      "id": "REQ-50",
+      "requirement": "Update the Layout component to use the useInternetIdentity hook to detect authentication instead of reading from localStorage.",
+      "reason": "frontend/src/components/Layout.tsx does not appear in the modified files list. No evidence of this change is present in the diff.",
+      "evidence": [
+        "frontend/src/App.tsx"
+      ]
+    },
+    {
+      "id": "REQ-52",
+      "requirement": "Update all frontend query hooks in useQueries.ts to use the Internet Identity principal instead of localStorage phone number for backend calls.",
+      "reason": "frontend/src/hooks/useQueries.ts does not appear in the modified files list. No evidence of this change is present in the diff.",
       "evidence": [
         "frontend-file-summaries.txt"
       ]
     }
   ],
-  "hallucinated_features": [
-    {
-      "description": "New /partner-panel (PartnerPanel) and /admin/rates (AdminRates) routes added to the frontend router.",
-      "reason": "The build request explicitly states non-goals include adding new features or screens. These two new routes and their associated pages were not requested.",
-      "evidence": [
-        "frontend-file-summaries.txt"
-      ]
-    },
-    {
-      "description": "UPI QR code section added to the Payment screen showing QR image, UPI ID bhangarwala@upi, total amount, and Copy UPI ID button.",
-      "reason": "The build request prohibits adding new features or changing existing feature logic. This is a new UI feature not requested in REQ-35.",
-      "evidence": [
-        "frontend-file-summaries.txt"
-      ]
-    },
-    {
-      "description": "Enhanced PaymentSuccess screen with polished receipt card, line-items table, Download Receipt via window.print(), and no-print CSS class.",
-      "reason": "This is a new feature enhancement not requested in REQ-35 and violates the constraint against altering existing feature logic or UI.",
-      "evidence": [
-        "frontend-file-summaries.txt"
-      ]
-    }
-  ],
-  "confidence": 0.82,
+  "hallucinated_features": [],
+  "confidence": 0.65,
   "changed_files": [
-    "backend/main.mo",
     "frontend-file-summaries.txt",
-    "frontend/public/sw.js",
+    "frontend/src/App.tsx",
+    "frontend/src/pages/Login.tsx",
+    "frontend/src/pages/ProfileSetup.tsx",
     "project_state.json"
   ]
 }

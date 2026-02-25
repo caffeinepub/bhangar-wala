@@ -4,7 +4,6 @@ import Time "mo:core/Time";
 import Nat "mo:core/Nat";
 import Runtime "mo:core/Runtime";
 import Principal "mo:core/Principal";
-import Int "mo:core/Int";
 import MixinStorage "blob-storage/Mixin";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
@@ -132,6 +131,12 @@ actor {
     subject : Text;
     message : Text;
     timestamp : Int;
+    status : TicketStatus;
+  };
+
+  public type TicketStatus = {
+    #open;
+    #resolved;
   };
 
   public type ScrapRateWithCategory = {
@@ -139,6 +144,43 @@ actor {
     categoryId : Nat;
     pricePerKg : Float;
     categoryName : Text;
+  };
+
+  public type AdminBooking = {
+    booking : Booking;
+    userProfile : ?UserProfile;
+    partner : ?Partner;
+  };
+
+  public type ScrapShopStatus = {
+    #pending;
+    #approved;
+    #rejected;
+  };
+
+  public type LanguageType = {
+    #en;
+    #hi;
+    #mr;
+    #gu;
+    #mw;
+    #other : Text;
+  };
+
+  public type ScrapShop = {
+    id : Text;
+    ownerName : Text;
+    shopName : Text;
+    phone : Text;
+    email : Text;
+    city : Text;
+    area : Text;
+    pincode : Text;
+    streetAddress : Text;
+    scrapCategoriesHandled : [Nat]; // Category IDs
+    preferredLanguage : LanguageType;
+    registrationStatus : ScrapShopStatus;
+    registeredAt : Int;
   };
 
   // ── State ────────────────────────────────────────────────────────
@@ -153,6 +195,7 @@ actor {
   var ratings = Map.empty<Nat, Rating>();
   var notifications = Map.empty<Nat, Notification>();
   var supportTickets = Map.empty<Nat, SupportTicket>();
+  var scrapShops = Map.empty<Text, ScrapShop>();
 
   var nextAddressId : Nat = 1;
   var nextBookingId : Nat = 1;
@@ -161,8 +204,9 @@ actor {
   var nextRatingId : Nat = 1;
   var nextNotificationId : Nat = 1;
   var nextTicketId : Nat = 1;
+  var nextScrapShopId : Nat = 1;
 
-  // ── Booking Phase ────────────────────────────────────────────────
+  // ── Booking Phase & Seed Data ─────────────────────────────────────
   public query func getBookingPhase(status : BookingStatus) : async Text {
     switch (status) {
       case (#pending) { "pending" };
@@ -175,7 +219,7 @@ actor {
     };
   };
 
-  // ── Seed Data ────────────────────────────────────────────────────
+  // Initialize seed data for scrap categories, rates, and partners.
   scrapCategories := Map.empty<Nat, ScrapCategory>();
   scrapCategories.add(
     1,
@@ -409,733 +453,143 @@ actor {
     },
   );
 
-  // ── User Profile ─────────────────────────────────────────────────
+  // ── User Profile Management ──────────────────────────────────────
+
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can get their profile");
+      Runtime.trap("Unauthorized: Only users can get their profile");
+    } else {
+      userProfiles.get(caller);
     };
-    userProfiles.get(caller);
   };
 
   public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
-    // Caller can view their own profile; admins can view any profile
     if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
       Runtime.trap("Unauthorized: Can only view your own profile");
+    } else {
+      userProfiles.get(user);
     };
-    userProfiles.get(user);
   };
 
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can save profiles");
-    };
-    userProfiles.add(caller, { profile with id = caller });
-  };
-
-  // ── Addresses ────────────────────────────────────────────────────
-  public query ({ caller }) func getAddresses() : async [Address] {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can view addresses");
-    };
-    let all = addresses.values().toArray();
-    all.filter(func(a : Address) : Bool { a.userId == caller });
-  };
-
-  public query ({ caller }) func getAddressById(id : Nat) : async Address {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can view addresses");
-    };
-    switch (addresses.get(id)) {
-      case (?addr) {
-        if (addr.userId != caller and not AccessControl.isAdmin(accessControlState, caller)) {
-          Runtime.trap("Unauthorized: You can only view your own addresses");
-        };
-        addr;
-      };
-      case (null) { Runtime.trap("Address not found") };
+      Runtime.trap("Unauthorized: Only users can save profiles");
+    } else {
+      userProfiles.add(caller, profile);
     };
   };
 
-  public shared ({ caller }) func addAddress(addressLabel : Text, street : Text, city : Text, pincode : Text, lat : ?Float, lng : ?Float) : async Address {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can add addresses");
+  // ── Scrap Shop Management ────────────────────────────────────────
+
+  // Register a new Scrap Shop with pending status.
+  // Open to any caller (including guests/anonymous) — this is a public registration endpoint.
+  public shared ({ caller }) func registerScrapShop(
+    ownerName : Text,
+    shopName : Text,
+    phone : Text,
+    email : Text,
+    city : Text,
+    area : Text,
+    pincode : Text,
+    streetAddress : Text,
+    scrapCategoriesHandled : [Nat],
+    rawLanguage : Text,
+  ) : async ScrapShop {
+    let id = nextScrapShopId.toText();
+    let language : LanguageType = switch (rawLanguage) {
+      case ("en") { #en };
+      case ("hi") { #hi };
+      case ("mr") { #mr };
+      case ("gu") { #gu };
+      case ("mw") { #mw };
+      case (lang) { #other(lang) };
     };
-    let id = nextAddressId;
-    nextAddressId += 1;
-    let addr : Address = {
+    let shop : ScrapShop = {
       id;
-      userId = caller;
-      addressLabel;
-      street;
+      ownerName;
+      shopName;
+      phone;
+      email;
       city;
+      area;
       pincode;
-      lat;
-      lng;
+      streetAddress;
+      scrapCategoriesHandled;
+      preferredLanguage = language;
+      registrationStatus = #pending;
+      registeredAt = Time.now();
     };
-    addresses.add(id, addr);
-    addr;
+    scrapShops.add(id, shop);
+    nextScrapShopId += 1;
+    shop;
   };
 
-  public shared ({ caller }) func updateAddress(id : Nat, addressLabel : Text, street : Text, city : Text, pincode : Text, lat : ?Float, lng : ?Float) : async Address {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can update addresses");
+  // Get Scrap Shop by phone number.
+  // Open to any caller — used to check if a shop is already registered.
+  public query ({ caller }) func getScrapShopByPhone(phone : Text) : async ?ScrapShop {
+    let all = scrapShops.values().toArray();
+    all.find(func(s) { s.phone == phone });
+  };
+
+  // Get all Scrap Shops — admin only.
+  public query ({ caller }) func getAllScrapShops() : async [ScrapShop] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
+      Runtime.trap("Unauthorized: Only admins can access all scrap shops");
+    } else {
+      scrapShops.values().toArray();
     };
-    switch (addresses.get(id)) {
-      case (?addr) {
-        if (addr.userId != caller and not AccessControl.isAdmin(accessControlState, caller)) {
-          Runtime.trap("Unauthorized: You can only update your own addresses");
-        };
-        let updated : Address = { addr with addressLabel; street; city; pincode; lat; lng };
-        addresses.add(id, updated);
+  };
+
+  // Update Scrap Shop registration status — admin only.
+  public shared ({ caller }) func updateScrapShopStatus(id : Text, status : ScrapShopStatus) : async ScrapShop {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
+      Runtime.trap("Unauthorized: Only admins can update scrap shop status");
+    };
+    switch (scrapShops.get(id)) {
+      case (?shop) {
+        let updated : ScrapShop = { shop with registrationStatus = status };
+        scrapShops.add(id, updated);
         updated;
       };
-      case (null) { Runtime.trap("Address not found") };
+      case (null) { Runtime.trap("Scrap shop not found") };
     };
   };
 
-  public shared ({ caller }) func deleteAddress(id : Nat) : async () {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can delete addresses");
-    };
-    switch (addresses.get(id)) {
-      case (?addr) {
-        if (addr.userId != caller and not AccessControl.isAdmin(accessControlState, caller)) {
-          Runtime.trap("Unauthorized: You can only delete your own addresses");
-        };
-        addresses.remove(id);
-      };
-      case (null) { Runtime.trap("Address not found") };
-    };
-  };
-
-  // ── Scrap Categories (public read) ───────────────────────────────
-  public query func getScrapCategories() : async [ScrapCategory] {
-    scrapCategories.values().toArray();
-  };
-
-  public query func getScrapCategoryById(id : Nat) : async ScrapCategory {
-    switch (scrapCategories.get(id)) {
-      case (?cat) { cat };
-      case (null) { Runtime.trap("Category not found") };
-    };
-  };
-
-  public shared ({ caller }) func addScrapCategory(name : Text, parentId : ?Nat, unit : Text) : async ScrapCategory {
+  // Update Scrap Shop details — admin only.
+  // Since ScrapShop records are not linked to a caller Principal, only admins
+  // can update shop details to prevent unauthorized modifications.
+  public shared ({ caller }) func updateScrapShop(
+    id : Text,
+    ownerName : Text,
+    shopName : Text,
+    email : Text,
+    city : Text,
+    area : Text,
+    pincode : Text,
+    streetAddress : Text,
+    scrapCategoriesHandled : [Nat],
+  ) : async ScrapShop {
     if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
-      Runtime.trap("Unauthorized: Only admins can add scrap categories");
-    };
-    let id = scrapCategories.size() + 1;
-    let cat : ScrapCategory = { id; name; parentId; unit };
-    scrapCategories.add(id, cat);
-    cat;
-  };
-
-  // ── Scrap Rates (public read) ────────────────────────────────────
-  public query func getScrapRates() : async [ScrapRate] {
-    scrapRates.values().toArray();
-  };
-
-  public query func getScrapRateByCategoryId(categoryId : Nat) : async ?ScrapRate {
-    let all = scrapRates.values().toArray();
-    all.find(func(r : ScrapRate) : Bool { r.categoryId == categoryId });
-  };
-
-  public shared ({ caller }) func addScrapRate(categoryId : Nat, pricePerKg : Float) : async ScrapRate {
-    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
-      Runtime.trap("Unauthorized: Only admins can add scrap rates");
-    };
-    let id = scrapRates.size() + 1;
-    let rate : ScrapRate = { id; categoryId; pricePerKg };
-    scrapRates.add(id, rate);
-    rate;
-  };
-
-  // Admin-only: update the price per kg for a given category's scrap rate
-  public shared ({ caller }) func updateScrapRate(categoryId : Nat, pricePerKg : Float) : async ScrapRate {
-    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
-      Runtime.trap("Unauthorized: Only admins can update scrap rates");
-    };
-    let maybeExistingRate = scrapRates.values().toArray().find(
-      func(rate : ScrapRate) : Bool { rate.categoryId == categoryId }
-    );
-    switch (maybeExistingRate) {
-      case (?rate) {
-        let updated : ScrapRate = { rate with pricePerKg };
-        scrapRates.add(rate.id, updated);
-        updated;
-      };
-      case (null) {
-        Runtime.trap("Category does not have a pricing yet. Use addScrapRate instead!");
-      };
-    };
-  };
-
-  // Public read: returns all scrap rates joined with their category names
-  public query func getScrapRatesWithCategories() : async [ScrapRateWithCategory] {
-    scrapRates.values().toArray().map(
-      func(rate : ScrapRate) : ScrapRateWithCategory {
-        let categoryName = switch (scrapCategories.get(rate.categoryId)) {
-          case (?cat) { cat.name };
-          case (null) { "Unknown Category" };
-        };
-        {
-          id = rate.id;
-          categoryId = rate.categoryId;
-          pricePerKg = rate.pricePerKg;
-          categoryName;
-        };
-      }
-    );
-  };
-
-  // ── Bookings ─────────────────────────────────────────────────────
-  public shared ({ caller }) func createBooking(addressId : Nat, scheduledTime : Int, totalEstimatedAmount : Float) : async Booking {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can create bookings");
-    };
-    // Verify the address belongs to the caller
-    switch (addresses.get(addressId)) {
-      case (?addr) {
-        if (addr.userId != caller) {
-          Runtime.trap("Unauthorized: You can only book with your own addresses");
-        };
-      };
-      case (null) { Runtime.trap("Address not found") };
-    };
-    let id = nextBookingId;
-    nextBookingId += 1;
-    let booking : Booking = {
-      id;
-      userId = caller;
-      addressId;
-      status = #pending;
-      scheduledTime;
-      partnerId = null;
-      totalEstimatedAmount;
-      totalFinalAmount = null;
-    };
-    bookings.add(id, booking);
-    booking;
-  };
-
-  public query ({ caller }) func getBookingById(id : Nat) : async Booking {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can view bookings");
-    };
-    switch (bookings.get(id)) {
-      case (?booking) {
-        if (booking.userId != caller and not AccessControl.isAdmin(accessControlState, caller)) {
-          Runtime.trap("Unauthorized: You can only view your own bookings");
-        };
-        booking;
-      };
-      case (null) { Runtime.trap("Booking not found") };
-    };
-  };
-
-  public query ({ caller }) func getBookingsByUser(userId : Principal) : async [Booking] {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can view bookings");
-    };
-    // Only admins can query bookings for arbitrary users; users can only query their own
-    if (caller != userId and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: You can only view your own bookings");
-    };
-    let all = bookings.values().toArray();
-    all.filter(func(b : Booking) : Bool { b.userId == userId });
-  };
-
-  public query ({ caller }) func getMyBookings() : async [Booking] {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can view their bookings");
-    };
-    let all = bookings.values().toArray();
-    all.filter(func(b : Booking) : Bool { b.userId == caller });
-  };
-
-  public query ({ caller }) func getBookingsByStatus(status : BookingStatus) : async [Booking] {
-    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
-      Runtime.trap("Unauthorized: Only admins can query bookings by status");
-    };
-    let all = bookings.values().toArray();
-    all.filter(func(b : Booking) : Bool { b.status == status });
-  };
-
-  public query ({ caller }) func getBookingsByAddressId(addressId : Nat) : async [Booking] {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can view bookings");
-    };
-    // Verify the address belongs to the caller (or caller is admin)
-    switch (addresses.get(addressId)) {
-      case (?addr) {
-        if (addr.userId != caller and not AccessControl.isAdmin(accessControlState, caller)) {
-          Runtime.trap("Unauthorized: You can only view bookings for your own addresses");
-        };
-      };
-      case (null) { Runtime.trap("Address not found") };
-    };
-    let all = bookings.values().toArray();
-    all.filter(func(b : Booking) : Bool { b.addressId == addressId });
-  };
-
-  public shared ({ caller }) func assignPartnerToBooking(bookingId : Nat, partnerId : Nat) : async Booking {
-    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
-      Runtime.trap("Unauthorized: Only admins can assign partners to bookings");
-    };
-    switch (bookings.get(bookingId)) {
-      case (?booking) {
-        let updated : Booking = { booking with partnerId = ?partnerId; status = #partner_assigned };
-        bookings.add(bookingId, updated);
-        let notifMessage = "Partner assigned for your booking. Partner ID: " # partnerId.toText();
-        _createNotification(booking.userId, "delivery", "Partner Assigned", notifMessage);
-        updated;
-      };
-      case (null) { Runtime.trap("Booking not found") };
-    };
-  };
-
-  public shared ({ caller }) func updateBookingStatus(bookingId : Nat, newStatus : BookingStatus) : async Booking {
-    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
-      Runtime.trap("Unauthorized: Only admins can update booking status");
-    };
-    switch (bookings.get(bookingId)) {
-      case (?booking) {
-        let updated : Booking = { booking with status = newStatus };
-        bookings.add(bookingId, updated);
-
-        switch (newStatus) {
-          case (#partner_assigned) {
-            _createNotification(booking.userId, "delivery", "Partner Assigned", "A partner has been assigned to your booking");
+      Runtime.trap("Unauthorized: Only admins can update scrap shop details");
+    } else {
+      switch (scrapShops.get(id)) {
+        case (null) { Runtime.trap("Scrap shop not found") };
+        case (?shop) {
+          let updated : ScrapShop = {
+            shop with
+            ownerName;
+            shopName;
+            email;
+            city;
+            area;
+            pincode;
+            streetAddress;
+            scrapCategoriesHandled;
           };
-          case (#on_the_way) {
-            _createNotification(booking.userId, "truck", "On the Way", "Your partner is on the way");
-          };
-          case (#arrived) {
-            _createNotification(booking.userId, "truck", "Arrived", "Your partner has arrived at your location");
-          };
-          case (#completed) {
-            _createNotification(booking.userId, "check_circle", "Completed", "Your booking is completed");
-          };
-          case (_) {};
-        };
-        updated;
-      };
-      case (null) { Runtime.trap("Booking not found") };
-    };
-  };
-
-  public shared ({ caller }) func autoAssignPartner(bookingId : Nat) : async Booking {
-    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
-      Runtime.trap("Unauthorized: Only admins can auto-assign partners");
-    };
-    let activePartners = partners.values().toArray().filter(func(p : Partner) : Bool { p.active });
-
-    if (activePartners.size() == 0) {
-      Runtime.trap("No active partners available");
-    };
-
-    let partner = activePartners[0];
-
-    switch (bookings.get(bookingId)) {
-      case (?booking) {
-        let updated : Booking = { booking with partnerId = ?partner.id; status = #partner_assigned };
-        bookings.add(bookingId, updated);
-        let notifMessage = "Partner assigned for your booking. Partner ID: " # partner.id.toText();
-        _createNotification(booking.userId, "delivery", "Partner Assigned", notifMessage);
-        updated;
-      };
-      case (null) { Runtime.trap("Booking not found") };
-    };
-  };
-
-  // ── Partner Panel Functions ──────────────────────────────────────
-  // Partners are identified by their phone number stored in localStorage matched
-  // against the Partners table. These functions are accessible to any authenticated
-  // user; the partnerId parameter is validated against the Partners table, and
-  // booking ownership by that partner is verified before any mutation.
-
-  // Returns all bookings assigned to the given partner (identified by partnerId).
-  // Any authenticated user may call this; the caller supplies their partnerId
-  // which is looked up in the Partners table to confirm it exists.
-  public query ({ caller }) func getBookingsByPartnerId(partnerId : Nat) : async [Booking] {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can access the partner panel");
-    };
-    // Verify the partner exists
-    switch (partners.get(partnerId)) {
-      case (null) { Runtime.trap("Partner not found") };
-      case (?_) {};
-    };
-    let all = bookings.values().toArray();
-    all.filter(func(b : Booking) : Bool {
-      switch (b.partnerId) {
-        case (?pid) { pid == partnerId };
-        case (null) { false };
-      };
-    });
-  };
-
-  // Allows a partner to accept a booking assigned to them (sets status to partner_assigned).
-  // The caller must be an authenticated user and the booking must already have this
-  // partnerId assigned (set by an admin via assignPartnerToBooking / autoAssignPartner).
-  public shared ({ caller }) func partnerAcceptBooking(bookingId : Nat, partnerId : Nat) : async Booking {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can access the partner panel");
-    };
-    // Verify the partner exists
-    switch (partners.get(partnerId)) {
-      case (null) { Runtime.trap("Partner not found") };
-      case (?_) {};
-    };
-    switch (bookings.get(bookingId)) {
-      case (?booking) {
-        // Verify this booking is assigned to the given partner
-        switch (booking.partnerId) {
-          case (?pid) {
-            if (pid != partnerId) {
-              Runtime.trap("Unauthorized: This booking is not assigned to you");
-            };
-          };
-          case (null) {
-            Runtime.trap("Unauthorized: This booking has no partner assigned");
-          };
-        };
-        let updated : Booking = { booking with status = #partner_assigned };
-        bookings.add(bookingId, updated);
-        _createNotification(booking.userId, "delivery", "Partner Accepted", "Your partner has accepted the booking");
-        updated;
-      };
-      case (null) { Runtime.trap("Booking not found") };
-    };
-  };
-
-  // Allows a partner to advance the booking status through the workflow:
-  // partner_assigned → on_the_way → arrived → completed
-  public shared ({ caller }) func partnerUpdateBookingStatus(bookingId : Nat, partnerId : Nat) : async Booking {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can access the partner panel");
-    };
-    // Verify the partner exists
-    switch (partners.get(partnerId)) {
-      case (null) { Runtime.trap("Partner not found") };
-      case (?_) {};
-    };
-    switch (bookings.get(bookingId)) {
-      case (?booking) {
-        // Verify this booking is assigned to the given partner
-        switch (booking.partnerId) {
-          case (?pid) {
-            if (pid != partnerId) {
-              Runtime.trap("Unauthorized: This booking is not assigned to you");
-            };
-          };
-          case (null) {
-            Runtime.trap("Unauthorized: This booking has no partner assigned");
-          };
-        };
-        // Advance status through the partner workflow
-        let newStatus : BookingStatus = switch (booking.status) {
-          case (#partner_assigned) { #on_the_way };
-          case (#on_the_way) { #arrived };
-          case (#arrived) { #completed };
-          case (_) {
-            Runtime.trap("Cannot advance booking status from current state");
-          };
-        };
-        let updated : Booking = { booking with status = newStatus };
-        bookings.add(bookingId, updated);
-        switch (newStatus) {
-          case (#on_the_way) {
-            _createNotification(booking.userId, "truck", "On the Way", "Your partner is on the way");
-          };
-          case (#arrived) {
-            _createNotification(booking.userId, "truck", "Arrived", "Your partner has arrived at your location");
-          };
-          case (#completed) {
-            _createNotification(booking.userId, "check_circle", "Completed", "Your booking is completed");
-          };
-          case (_) {};
-        };
-        updated;
-      };
-      case (null) { Runtime.trap("Booking not found") };
-    };
-  };
-
-  // ── Booking Items ────────────────────────────────────────────────
-  public shared ({ caller }) func addBookingItem(bookingId : Nat, categoryId : Nat, estimatedWeight : Float) : async BookingItem {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can add booking items");
-    };
-    // Verify the booking belongs to the caller
-    switch (bookings.get(bookingId)) {
-      case (?booking) {
-        if (booking.userId != caller and not AccessControl.isAdmin(accessControlState, caller)) {
-          Runtime.trap("Unauthorized: You can only add items to your own bookings");
+          scrapShops.add(id, updated);
+          updated;
         };
       };
-      case (null) { Runtime.trap("Booking not found") };
     };
-    let id = nextBookingItemId;
-    nextBookingItemId += 1;
-    let item : BookingItem = {
-      id;
-      bookingId;
-      categoryId;
-      estimatedWeight;
-      finalWeight = null;
-    };
-    bookingItems.add(id, item);
-    item;
-  };
-
-  public query ({ caller }) func getBookingItems(bookingId : Nat) : async [BookingItem] {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can view booking items");
-    };
-    // Verify the booking belongs to the caller (or caller is admin)
-    switch (bookings.get(bookingId)) {
-      case (?booking) {
-        if (booking.userId != caller and not AccessControl.isAdmin(accessControlState, caller)) {
-          Runtime.trap("Unauthorized: You can only view items for your own bookings");
-        };
-      };
-      case (null) { Runtime.trap("Booking not found") };
-    };
-    let all = bookingItems.values().toArray();
-    all.filter(func(i : BookingItem) : Bool { i.bookingId == bookingId });
-  };
-
-  public shared ({ caller }) func updateBookingItemFinalWeight(id : Nat, finalWeight : Float) : async BookingItem {
-    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
-      Runtime.trap("Unauthorized: Only admins can update final weights");
-    };
-    switch (bookingItems.get(id)) {
-      case (?item) {
-        let updated : BookingItem = { item with finalWeight = ?finalWeight };
-        bookingItems.add(id, updated);
-        updated;
-      };
-      case (null) { Runtime.trap("Booking item not found") };
-    };
-  };
-
-  // ── Partners (public read for users) ────────────────────────────
-  public query func getPartners() : async [Partner] {
-    partners.values().toArray();
-  };
-
-  public query func getPartnerById(id : Nat) : async Partner {
-    switch (partners.get(id)) {
-      case (?partner) { partner };
-      case (null) { Runtime.trap("Partner not found") };
-    };
-  };
-
-  // Looks up a partner by phone number; used by the partner panel to resolve
-  // the partnerId from the phone stored in localStorage.
-  public query func getPartnerByPhone(phone : Text) : async ?Partner {
-    let all = partners.values().toArray();
-    all.find(func(p : Partner) : Bool { p.phone == phone });
-  };
-
-  public shared ({ caller }) func addPartner(name : Text, phone : Text, vehicle : Text, rating : Float, active : Bool) : async Partner {
-    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
-      Runtime.trap("Unauthorized: Only admins can add partners");
-    };
-    let id = partners.size() + 1;
-    let partner : Partner = { id; name; phone; vehicle; rating; active };
-    partners.add(id, partner);
-    partner;
-  };
-
-  public shared ({ caller }) func updatePartner(id : Nat, name : Text, phone : Text, vehicle : Text, rating : Float, active : Bool) : async Partner {
-    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
-      Runtime.trap("Unauthorized: Only admins can update partners");
-    };
-    switch (partners.get(id)) {
-      case (?_) {
-        let updated : Partner = { id; name; phone; vehicle; rating; active };
-        partners.add(id, updated);
-        updated;
-      };
-      case (null) { Runtime.trap("Partner not found") };
-    };
-  };
-
-  // ── Payments ─────────────────────────────────────────────────────
-  public shared ({ caller }) func createPayment(bookingId : Nat, amount : Float, method : PaymentMethod, transactionId : ?Text) : async Payment {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can create payments");
-    };
-    // Verify the booking belongs to the caller
-    switch (bookings.get(bookingId)) {
-      case (?booking) {
-        if (booking.userId != caller and not AccessControl.isAdmin(accessControlState, caller)) {
-          Runtime.trap("Unauthorized: You can only pay for your own bookings");
-        };
-      };
-      case (null) { Runtime.trap("Booking not found") };
-    };
-    let id = nextPaymentId;
-    nextPaymentId += 1;
-    let payment : Payment = {
-      id;
-      bookingId;
-      amount;
-      method;
-      status = #completed;
-      transactionId;
-    };
-    payments.add(id, payment);
-    payment;
-  };
-
-  public query ({ caller }) func getPaymentByBookingId(bookingId : Nat) : async ?Payment {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can view payments");
-    };
-    // Verify the booking belongs to the caller (or caller is admin)
-    switch (bookings.get(bookingId)) {
-      case (?booking) {
-        if (booking.userId != caller and not AccessControl.isAdmin(accessControlState, caller)) {
-          Runtime.trap("Unauthorized: You can only view payments for your own bookings");
-        };
-      };
-      case (null) { Runtime.trap("Booking not found") };
-    };
-    let all = payments.values().toArray();
-    all.find(func(p : Payment) : Bool { p.bookingId == bookingId });
-  };
-
-  public shared ({ caller }) func updatePaymentStatus(id : Nat, status : PaymentStatus) : async Payment {
-    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
-      Runtime.trap("Unauthorized: Only admins can update payment status");
-    };
-    switch (payments.get(id)) {
-      case (?payment) {
-        let updated : Payment = { payment with status };
-        payments.add(id, updated);
-        updated;
-      };
-      case (null) { Runtime.trap("Payment not found") };
-    };
-  };
-
-  // ── Ratings ──────────────────────────────────────────────────────
-  public shared ({ caller }) func submitRating(bookingId : Nat, partnerId : Nat, stars : Nat, comment : ?Text) : async Rating {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can submit ratings");
-    };
-    // Verify the booking belongs to the caller
-    switch (bookings.get(bookingId)) {
-      case (?booking) {
-        if (booking.userId != caller) {
-          Runtime.trap("Unauthorized: You can only rate your own bookings");
-        };
-      };
-      case (null) { Runtime.trap("Booking not found") };
-    };
-    let id = nextRatingId;
-    nextRatingId += 1;
-    let rating : Rating = { id; bookingId; userId = caller; partnerId; stars; comment };
-    ratings.add(id, rating);
-    rating;
-  };
-
-  public query ({ caller }) func getRatingByBookingId(bookingId : Nat) : async ?Rating {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can view ratings");
-    };
-    // Verify the booking belongs to the caller (or caller is admin)
-    switch (bookings.get(bookingId)) {
-      case (?booking) {
-        if (booking.userId != caller and not AccessControl.isAdmin(accessControlState, caller)) {
-          Runtime.trap("Unauthorized: You can only view ratings for your own bookings");
-        };
-      };
-      case (null) { Runtime.trap("Booking not found") };
-    };
-    let all = ratings.values().toArray();
-    all.find(func(r : Rating) : Bool { r.bookingId == bookingId });
-  };
-
-  // ── Notifications ────────────────────────────────────────────────
-  public query ({ caller }) func getNotifications() : async [Notification] {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can view notifications");
-    };
-    let all = notifications.values().toArray();
-    all.filter(func(n : Notification) : Bool { n.userId == caller });
-  };
-
-  public shared ({ caller }) func markAllNotificationsRead() : async () {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can mark notifications as read");
-    };
-    for ((id, notif) in notifications.entries()) {
-      if (notif.userId == caller) {
-        notifications.add(id, { notif with isRead = true });
-      };
-    };
-  };
-
-  public shared ({ caller }) func clearAllNotifications() : async () {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can clear notifications");
-    };
-    for ((id, notif) in notifications.entries()) {
-      if (notif.userId == caller) {
-        notifications.remove(id);
-      };
-    };
-  };
-
-  func _createNotification(userId : Principal, icon : Text, title : Text, message : Text) {
-    let id = nextNotificationId;
-    nextNotificationId += 1;
-    let notif : Notification = {
-      id;
-      userId;
-      icon;
-      title;
-      message;
-      timestamp = Time.now();
-      isRead = false;
-    };
-    notifications.add(id, notif);
-  };
-
-  // ── Support Tickets ──────────────────────────────────────────────
-  public shared ({ caller }) func submitSupportTicket(subject : Text, message : Text) : async SupportTicket {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can submit support tickets");
-    };
-    let id = nextTicketId;
-    nextTicketId += 1;
-    let ticket : SupportTicket = {
-      id;
-      userId = caller;
-      subject;
-      message;
-      timestamp = Time.now();
-    };
-    supportTickets.add(id, ticket);
-    ticket;
-  };
-
-  public query ({ caller }) func getSupportTickets() : async [SupportTicket] {
-    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
-      Runtime.trap("Unauthorized: Only admins can view all support tickets");
-    };
-    supportTickets.values().toArray();
-  };
-
-  public query ({ caller }) func getMySupportTickets() : async [SupportTicket] {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can view their support tickets");
-    };
-    let all = supportTickets.values().toArray();
-    all.filter(func(t : SupportTicket) : Bool { t.userId == caller });
   };
 };

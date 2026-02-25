@@ -10,8 +10,9 @@ import {
   useGetScrapRates,
   useGetPartnerById,
   useGetPaymentByBookingId,
+  PaymentMethod,
 } from '../hooks/useQueries';
-import { BookingStatus, PaymentMethod } from '../backend';
+import { BookingStatus } from '../backend';
 
 const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
   [BookingStatus.pending]: { label: 'Pending', bg: 'bg-yellow-100', text: 'text-yellow-800' },

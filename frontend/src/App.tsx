@@ -3,7 +3,6 @@ import { lazy, Suspense } from 'react';
 import Layout from './components/Layout';
 import Splash from './pages/Splash';
 import Login from './pages/Login';
-import OtpVerification from './pages/OtpVerification';
 import ProfileSetup from './pages/ProfileSetup';
 import Home from './pages/Home';
 import BookPickup from './pages/BookPickup';
@@ -23,6 +22,19 @@ import Notifications from './pages/Notifications';
 
 const PartnerPanel = lazy(() => import('./pages/PartnerPanel'));
 const AdminRates = lazy(() => import('./pages/AdminRates'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const AdminBookings = lazy(() => import('./pages/AdminBookings'));
+const AdminPartners = lazy(() => import('./pages/AdminPartners'));
+const AdminSupportTickets = lazy(() => import('./pages/AdminSupportTickets'));
+const AdminShopRegistrations = lazy(() => import('./pages/AdminShopRegistrations'));
+const ShopRegister = lazy(() => import('./pages/ShopRegister'));
+const ShopRegisterStatus = lazy(() => import('./pages/ShopRegisterStatus'));
+
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center min-h-screen">
+    <span className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+  </div>
+);
 
 // Root route
 const rootRoute = createRootRoute({
@@ -42,10 +54,13 @@ const loginRoute = createRoute({
   component: Login,
 });
 
-const otpRoute = createRoute({
+// Redirect /otp-verification to /login (legacy route removed)
+const otpRedirectRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/otp-verification',
-  component: OtpVerification,
+  beforeLoad: () => {
+    throw redirect({ to: '/login' });
+  },
 });
 
 const profileSetupRoute = createRoute({
@@ -59,7 +74,7 @@ const partnerPanelRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/partner-panel',
   component: () => (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><span className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" /></div>}>
+    <Suspense fallback={<LoadingFallback />}>
       <PartnerPanel />
     </Suspense>
   ),
@@ -69,8 +84,78 @@ const adminRatesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/admin/rates',
   component: () => (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><span className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" /></div>}>
+    <Suspense fallback={<LoadingFallback />}>
       <AdminRates />
+    </Suspense>
+  ),
+});
+
+const adminDashboardRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin',
+  component: () => (
+    <Suspense fallback={<LoadingFallback />}>
+      <AdminDashboard />
+    </Suspense>
+  ),
+});
+
+const adminBookingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin/bookings',
+  component: () => (
+    <Suspense fallback={<LoadingFallback />}>
+      <AdminBookings />
+    </Suspense>
+  ),
+});
+
+const adminPartnersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin/partners',
+  component: () => (
+    <Suspense fallback={<LoadingFallback />}>
+      <AdminPartners />
+    </Suspense>
+  ),
+});
+
+const adminSupportTicketsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin/support-tickets',
+  component: () => (
+    <Suspense fallback={<LoadingFallback />}>
+      <AdminSupportTickets />
+    </Suspense>
+  ),
+});
+
+const adminShopRegistrationsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin/shop-registrations',
+  component: () => (
+    <Suspense fallback={<LoadingFallback />}>
+      <AdminShopRegistrations />
+    </Suspense>
+  ),
+});
+
+const shopRegisterRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/shop-register',
+  component: () => (
+    <Suspense fallback={<LoadingFallback />}>
+      <ShopRegister />
+    </Suspense>
+  ),
+});
+
+const shopRegisterStatusRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/shop-register/status',
+  component: () => (
+    <Suspense fallback={<LoadingFallback />}>
+      <ShopRegisterStatus />
     </Suspense>
   ),
 });
@@ -185,10 +270,17 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   splashRoute,
   loginRoute,
-  otpRoute,
+  otpRedirectRoute,
   profileSetupRoute,
   partnerPanelRoute,
   adminRatesRoute,
+  adminDashboardRoute,
+  adminBookingsRoute,
+  adminPartnersRoute,
+  adminSupportTicketsRoute,
+  adminShopRegistrationsRoute,
+  shopRegisterRoute,
+  shopRegisterStatusRoute,
   layoutRoute.addChildren([
     homeRoute,
     bookPickupRoute,

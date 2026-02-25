@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 11,
-  "summary": "Bhangar wala is a PWA that connects households with scrap collection partners for doorstep pickup and instant payment. Built with React, Tailwind CSS, Vite, and Supabase. Features phone OTP auth, address management, scrap category selection, booking system, real-time tracking, dynamic pricing, UPI/cash payments, booking history, ratings, push notifications, and customer support. Mobile-first design with green/slate/amber palette.",
+  "projectStateVersion": 19,
+  "summary": "Bhangar wala is a PWA that connects households with scrap collection partners for doorstep pickup and instant payment. Built with React, Tailwind CSS, Vite, and Supabase. Features phone OTP auth, address management, scrap category selection, booking system, real-time tracking, dynamic pricing, UPI/cash payments, booking history, ratings, push notifications, and customer support. Mobile-first design with green/slate/amber palette. Authentication is being switched to Internet Identity (supporting Google, Apple, Microsoft, and passkey sign-in) to replace the simulated phone OTP flow.",
   "architectural_notes": [
     "Tech stack: React + Tailwind CSS + Vite (frontend), Supabase (auth, DB, storage, realtime)",
     "External APIs: SMS Gateway (OTP), Google Maps (address/location), UPI/Razorpay (payments), Firebase Cloud Messaging (push notifications)",
@@ -10,7 +10,9 @@
     "Bottom nav: Home, Bookings, Profile, Support. Header has notifications icon and location indicator.",
     "DB schema: Users, Addresses, ScrapCategories, ScrapRates, Bookings, BookingItems, Partners, Payments",
     "Supabase realtime subscriptions used for order/tracking status updates",
-    "Mobile-first design, typography: Inter/Poppins headings, system fonts for body"
+    "Mobile-first design, typography: Inter/Poppins headings, system fonts for body",
+    "Multilingual support required: Hindi, Marathi, Gujarati, Marwadi, English (i18n/localization layer needed)",
+    "Authentication: Internet Identity (supports Google, Apple, Microsoft, passkey) replaces simulated phone OTP flow"
   ],
   "known_issues": [],
   "isFixRequest": false,
@@ -254,6 +256,94 @@
         "REQ-35"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-create-an-admin-panel-dashboard-screen-admin-accessible-via-direct-url-no-bottom-nav-link-required-the-dashboard-should-display-summary-statistics-cards-total-bookings-total-revenue-active-partners-and-pending-bookings-include-quick-navigation-links-to-all-admin-sub-sections-scrap-rates-bookings-partners-support-tickets-style-consistently-with-the-app-s-green-slate-amber-theme-but-with-a-distinct-admin-layout-no-bottom-nav-bar-sidebar-or-top-tab-navigation-instead",
+      "title": "Create an Admin Panel dashboard screen (`/admin`) accessible via direct URL (no bottom nav link required). The dashboard should display summary statistics cards: total bookings, total revenue, active partners, and pending bookings. Include quick navigation links to all admin sub-sections (Scrap Rates, Bookings, Partners, Support Tickets). Style consistently with the app's green/slate/amber theme but with a distinct admin layout (no bottom nav bar, sidebar or top tab navigation instead).",
+      "reqIds": [
+        "REQ-36"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-an-admin-all-bookings-screen-admin-bookings-that-displays-a-paginated-table-list-of-all-bookings-in-the-system-not-filtered-by-user-each-row-shows-booking-id-customer-name-phone-scrap-category-scheduled-time-assigned-partner-name-status-badge-and-estimated-amount-include-filter-chips-for-status-all-pending-confirmed-partner-assigned-on-the-way-arrived-completed-cancelled-and-a-search-bar-filtering-by-booking-id-or-customer-phone-tapping-a-row-navigates-to-booking-details-id-include-a-back-button-to-admin",
+      "title": "Create an Admin — All Bookings screen (`/admin/bookings`) that displays a paginated table/list of all bookings in the system (not filtered by user). Each row shows booking ID, customer name/phone, scrap category, scheduled time, assigned partner name, status badge, and estimated amount. Include filter chips for status (All, Pending, Confirmed, Partner Assigned, On the Way, Arrived, Completed, Cancelled) and a search bar filtering by booking ID or customer phone. Tapping a row navigates to `/booking-details/:id`. Include a back button to `/admin`.",
+      "reqIds": [
+        "REQ-37"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-an-admin-partners-management-screen-admin-partners-that-lists-all-partners-from-the-backend-each-partner-card-shows-name-phone-vehicle-type-star-rating-and-active-inactive-status-toggle-include-an-add-partner-floating-button-that-opens-an-inline-form-or-modal-to-create-a-new-partner-fields-name-phone-vehicle-type-initial-rating-defaulting-to-5-0-active-toggle-each-card-also-has-an-edit-button-to-update-partner-details-and-a-deactivate-activate-toggle-that-updates-the-partner-s-active-status-in-the-backend-include-a-back-button-to-admin",
+      "title": "Create an Admin — Partners Management screen (`/admin/partners`) that lists all partners from the backend. Each partner card shows name, phone, vehicle type, star rating, and active/inactive status toggle. Include an 'Add Partner' floating button that opens an inline form or modal to create a new partner (fields: name, phone, vehicle type, initial rating defaulting to 5.0, active toggle). Each card also has an 'Edit' button to update partner details and a 'Deactivate/Activate' toggle that updates the partner's active status in the backend. Include a back button to `/admin`.",
+      "reqIds": [
+        "REQ-38"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-an-admin-support-tickets-screen-admin-support-tickets-that-lists-all-support-tickets-submitted-by-users-via-the-support-screen-each-ticket-card-shows-the-user-s-phone-name-subject-message-body-and-submission-timestamp-include-a-status-toggle-open-resolved-on-each-card-that-updates-the-ticket-status-in-the-backend-include-a-back-button-to-admin",
+      "title": "Create an Admin — Support Tickets screen (`/admin/support-tickets`) that lists all support tickets submitted by users via the Support screen. Each ticket card shows the user's phone/name, subject, message body, and submission timestamp. Include a status toggle (Open/Resolved) on each card that updates the ticket status in the backend. Include a back button to `/admin`.",
+      "reqIds": [
+        "REQ-39"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-admin-navigation-register-the-admin-admin-bookings-admin-partners-and-admin-support-tickets-routes-in-frontend-src-app-tsx-as-standalone-routes-outside-the-authenticated-layout-similar-to-partner-panel-and-admin-rates-ensure-none-of-these-admin-routes-show-the-bottom-navigation-bar-or-the-standard-user-top-header",
+      "title": "Add admin navigation: register the `/admin`, `/admin/bookings`, `/admin/partners`, and `/admin/support-tickets` routes in `frontend/src/App.tsx` as standalone routes (outside the authenticated layout, similar to `/partner-panel` and `/admin/rates`). Ensure none of these admin routes show the bottom navigation bar or the standard user top header.",
+      "reqIds": [
+        "REQ-40"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-scrap-shop-registration-screen-at-the-route-shop-register-this-screen-allows-scrap-dealers-and-shop-owners-to-register-their-business-it-must-support-five-languages-english-hindi-marathi-gujarati-and-marwadi-switchable-via-a-prominent-language-selector-flag-label-chips-at-the-top-of-the-page-all-form-labels-placeholders-button-text-validation-messages-and-instructional-copy-must-change-dynamically-based-on-the-selected-language-use-a-translations-object-keyed-by-language-code-en-hi-mr-gu-mw-within-the-component-the-form-must-include-owner-proprietor-name-shop-name-phone-number-10-digit-pre-filled-if-available-from-localstorage-email-address-optional-city-free-text-input-area-locality-free-text-input-supports-multi-area-context-so-dealers-can-describe-their-service-coverage-area-pincode-street-address-shop-address-scrap-categories-handled-multi-select-checkboxes-from-the-app-s-scrap-category-list-fetched-from-backend-and-preferred-language-auto-set-to-the-currently-selected-ui-language-but-editable-include-a-register-shop-submit-button-that-calls-the-registerscrapshop-backend-method-on-success-show-a-confirmation-message-translated-and-navigate-to-shop-register-status-on-validation-error-show-inline-translated-error-messages",
+      "title": "Create a Scrap Shop Registration screen at the route /shop-register. This screen allows scrap dealers and shop owners to register their business. It must support five languages — English, Hindi (हिन्दी), Marathi (मराठी), Gujarati (ગુજરાતી), and Marwadi (मारवाड़ी) — switchable via a prominent language selector (flag/label chips) at the top of the page. All form labels, placeholders, button text, validation messages, and instructional copy must change dynamically based on the selected language. Use a translations object keyed by language code ('en', 'hi', 'mr', 'gu', 'mw') within the component. The form must include: Owner/Proprietor Name, Shop Name, Phone Number (10-digit, pre-filled if available from localStorage), Email Address (optional), City (free-text input), Area/Locality (free-text input — supports multi-area context so dealers can describe their service coverage area), Pincode, Street Address / Shop Address, Scrap Categories Handled (multi-select checkboxes from the app's scrap category list fetched from backend), and Preferred Language (auto-set to the currently selected UI language but editable). Include a 'Register Shop' submit button that calls the registerScrapShop backend method. On success, show a confirmation message (translated) and navigate to /shop-register/status. On validation error, show inline translated error messages.",
+      "reqIds": [
+        "REQ-43"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-shop-registration-status-screen-at-shop-register-status-this-screen-displays-the-current-registration-status-of-the-shop-associated-with-the-logged-in-user-s-phone-number-fetched-via-getscrapshopbyphone-show-the-shop-name-registration-date-and-a-status-badge-pending-amber-approved-green-or-rejected-red-include-translated-status-messages-for-each-state-in-all-five-languages-english-hindi-marathi-gujarati-marwadi-if-the-status-is-pending-show-a-note-that-review-takes-24-48-hours-if-approved-show-a-go-to-home-button-if-rejected-show-a-re-register-button-navigating-back-to-shop-register-include-a-language-selector-matching-the-one-on-shop-register-so-the-user-can-read-the-status-in-their-preferred-language",
+      "title": "Create a Shop Registration Status screen at /shop-register/status. This screen displays the current registration status of the shop associated with the logged-in user's phone number (fetched via getScrapShopByPhone). Show the shop name, registration date, and a status badge: Pending (amber), Approved (green), or Rejected (red). Include translated status messages for each state in all five languages (English, Hindi, Marathi, Gujarati, Marwadi). If the status is pending, show a note that review takes 24–48 hours. If approved, show a 'Go to Home' button. If rejected, show a 'Re-register' button navigating back to /shop-register. Include a language selector matching the one on /shop-register so the user can read the status in their preferred language.",
+      "reqIds": [
+        "REQ-44"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-an-admin-scrap-shop-registrations-screen-at-admin-shop-registrations-this-screen-lists-all-registered-scrap-shops-fetched-via-getallscrapshops-in-a-card-table-layout-each-entry-shows-shop-name-owner-name-phone-city-area-pincode-scrap-categories-handled-preferred-language-registration-date-and-current-status-badge-include-filter-chips-all-pending-approved-rejected-include-a-search-bar-filtering-by-shop-name-phone-or-city-each-card-has-an-approve-button-calls-updatescrapshopstatus-with-approved-and-a-reject-button-calls-updatescrapshopstatus-with-rejected-visible-when-status-is-pending-use-the-existing-admin-layout-no-bottom-nav-bar-consistent-green-slate-amber-theme-add-a-navigation-link-to-this-screen-from-the-admin-dashboard-admin-quick-navigation-section",
+      "title": "Create an Admin — Scrap Shop Registrations screen at /admin/shop-registrations. This screen lists all registered scrap shops (fetched via getAllScrapShops) in a card/table layout. Each entry shows shop name, owner name, phone, city, area, pincode, scrap categories handled, preferred language, registration date, and current status badge. Include filter chips: All, Pending, Approved, Rejected. Include a search bar filtering by shop name, phone, or city. Each card has an 'Approve' button (calls updateScrapShopStatus with #approved) and a 'Reject' button (calls updateScrapShopStatus with #rejected), visible when status is pending. Use the existing admin layout (no bottom nav bar, consistent green/slate/amber theme). Add a navigation link to this screen from the Admin Dashboard (/admin) quick navigation section.",
+      "reqIds": [
+        "REQ-45"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-on-the-admin-dashboard-screen-admin-ensure-the-page-is-fully-accessible-by-navigating-directly-to-admin-in-the-browser-the-dashboard-must-display-all-summary-statistics-cards-total-bookings-total-revenue-active-partners-pending-bookings-and-show-quick-navigation-links-to-all-admin-sub-sections-scrap-rates-admin-rates-all-bookings-admin-bookings-partners-admin-partners-support-tickets-admin-support-tickets-and-shop-registrations-admin-shop-registrations-verify-the-admin-layout-renders-without-the-bottom-navigation-bar-or-standard-user-top-header",
+      "title": "On the Admin Dashboard screen (/admin), ensure the page is fully accessible by navigating directly to /admin in the browser. The dashboard must display all summary statistics cards (total bookings, total revenue, active partners, pending bookings) and show quick navigation links to all admin sub-sections: Scrap Rates (/admin/rates), All Bookings (/admin/bookings), Partners (/admin/partners), Support Tickets (/admin/support-tickets), and Shop Registrations (/admin/shop-registrations). Verify the admin layout renders without the bottom navigation bar or standard user top header.",
+      "reqIds": [
+        "REQ-46"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-replace-the-simulated-phone-otp-login-flow-with-internet-identity-authentication-update-the-login-screen-login-to-display-a-single-sign-in-button-replacing-the-phone-number-input-country-code-selector-otp-fields-and-terms-checkbox-tapping-sign-in-triggers-the-internet-identity-login-popup-using-the-useinternetidentity-hook-already-available-at-frontend-src-hooks-useinternetidentity-ts-after-successful-login-check-whether-a-user-profile-exists-in-the-backend-if-no-profile-exists-navigate-to-profile-setup-if-a-profile-exists-navigate-to-home-remove-the-otp-verification-route-and-page",
+      "title": "Replace the simulated phone OTP login flow with Internet Identity authentication. Update the Login screen (`/login`) to display a single 'Sign In' button (replacing the phone number input, country code selector, OTP fields, and terms checkbox). Tapping 'Sign In' triggers the Internet Identity login popup using the `useInternetIdentity` hook already available at `frontend/src/hooks/useInternetIdentity.ts`. After successful login, check whether a user profile exists in the backend: if no profile exists, navigate to `/profile-setup`; if a profile exists, navigate to `/home`. Remove the `/otp-verification` route and page.",
+      "reqIds": [
+        "REQ-47"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-profile-setup-screen-profile-setup-to-derive-the-user-identifier-from-the-internet-identity-principal-via-useinternetidentity-rather-than-from-a-phone-number-stored-in-localstorage-use-the-principal-text-as-the-user-id-when-calling-the-backend-createuserprofile-method-since-phone-number-is-no-longer-collected-during-login-make-the-phone-field-on-the-profile-setup-form-optional",
+      "title": "Update the Profile Setup screen (`/profile-setup`) to derive the user identifier from the Internet Identity principal (via `useInternetIdentity`) rather than from a phone number stored in localStorage. Use the principal text as the user ID when calling the backend `createUserProfile` method. Since phone number is no longer collected during login, make the phone field on the profile setup form optional.",
+      "reqIds": [
+        "REQ-51"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -408,6 +498,66 @@
       "summary": "Add a backend `updateScrapRate` update method that accepts a categoryId and a new pricePerKg (Float) and updates the corresponding ScrapRate record. Add a `getScrapRatesWithCategories` query method that returns all scrap rates joined with their category names.",
       "reqIds": [
         "REQ-31"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-41",
+      "summary": "Extend the backend (`backend/main.mo`) with the following new query and update methods needed by the admin panel: `getAllBookings()` returning all bookings with user profile and partner details; `getAllPartners()` returning all partner records; `addPartner(name, phone, vehicle, rating, active)` creating a new partner; `updatePartner(id, name, phone, vehicle, rating)` updating partner details; `togglePartnerActive(id)` toggling a partner's active boolean; `getAllSupportTickets()` returning all support ticket records; `updateSupportTicketStatus(id, status)` updating a support ticket's status to 'open' or 'resolved'.",
+      "reqIds": [
+        "REQ-41"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-42",
+      "summary": "Scrap shop/dealer registration panel with multi-area support and multilingual interface (Hindi, Marathi, Gujarati, Marwadi, English)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-43",
+      "summary": "Extend the backend (backend/main.mo) with a new ScrapShop entity and related methods. Add the ScrapShop data type with fields: id (Text), ownerName (Text), shopName (Text), phone (Text), email (Text), city (Text), area (Text), pincode (Text), streetAddress (Text), scrapCategoriesHandled (array of category IDs), preferredLanguage (Text — one of: 'en', 'hi', 'mr', 'gu', 'mw'), registrationStatus (variant: #pending | #approved | #rejected), registeredAt (Int timestamp). Implement: registerScrapShop(ownerName, shopName, phone, email, city, area, pincode, streetAddress, scrapCategoriesHandled, preferredLanguage) — creates a new shop record with status #pending; getScrapShopByPhone(phone) — returns a shop record by phone; getAllScrapShops() — returns all shop records (admin use); updateScrapShopStatus(id, status) — updates registration status to approved or rejected (admin use); updateScrapShop(id, ownerName, shopName, email, city, area, pincode, streetAddress, scrapCategoriesHandled) — updates shop details.",
+      "reqIds": [
+        "REQ-42"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-44",
+      "summary": "Switch authentication from simulated phone OTP to Internet Identity, supporting Google, Apple, Microsoft, and passkey sign-in options",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-46",
+      "summary": "Update the Splash screen (`/splash`) to determine authentication state using the `useInternetIdentity` hook's identity/isAuthenticated value instead of checking localStorage for a phone OTP session. If authenticated, redirect to `/home`; otherwise redirect to `/login`.",
+      "reqIds": [
+        "REQ-48"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-47",
+      "summary": "Update the Logout button on the Profile screen (`/profile`) to call the `logout` method from the `useInternetIdentity` hook instead of simply clearing localStorage. After logout, redirect to `/login`.",
+      "reqIds": [
+        "REQ-49"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-48",
+      "summary": "Update the Layout component (`frontend/src/components/Layout.tsx`) to use the `useInternetIdentity` hook to detect authentication instead of reading from localStorage. Unauthenticated users accessing protected routes should be redirected to `/login`.",
+      "reqIds": [
+        "REQ-50"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-50",
+      "summary": "Update all frontend query hooks in `frontend/src/hooks/useQueries.ts` that currently look up the current user by phone number from localStorage to instead use the Internet Identity principal obtained from the `useActor` / `useInternetIdentity` hooks as the user identifier for backend calls.",
+      "reqIds": [
+        "REQ-52"
       ],
       "status": "pending"
     }

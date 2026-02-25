@@ -19,46 +19,38 @@ export const _CaffeineStorageRefillResult = IDL.Record({
   'success' : IDL.Opt(IDL.Bool),
   'topped_up_amount' : IDL.Opt(IDL.Nat),
 });
-export const Address = IDL.Record({
-  'id' : IDL.Nat,
-  'lat' : IDL.Opt(IDL.Float64),
-  'lng' : IDL.Opt(IDL.Float64),
-  'street' : IDL.Text,
-  'city' : IDL.Text,
-  'userId' : IDL.Principal,
-  'addressLabel' : IDL.Text,
-  'pincode' : IDL.Text,
-});
-export const BookingItem = IDL.Record({
-  'id' : IDL.Nat,
-  'categoryId' : IDL.Nat,
-  'bookingId' : IDL.Nat,
-  'estimatedWeight' : IDL.Float64,
-  'finalWeight' : IDL.Opt(IDL.Float64),
-});
-export const Partner = IDL.Record({
-  'id' : IDL.Nat,
-  'active' : IDL.Bool,
-  'name' : IDL.Text,
-  'vehicle' : IDL.Text,
-  'rating' : IDL.Float64,
-  'phone' : IDL.Text,
-});
-export const ScrapCategory = IDL.Record({
-  'id' : IDL.Nat,
-  'name' : IDL.Text,
-  'unit' : IDL.Text,
-  'parentId' : IDL.Opt(IDL.Nat),
-});
-export const ScrapRate = IDL.Record({
-  'id' : IDL.Nat,
-  'categoryId' : IDL.Nat,
-  'pricePerKg' : IDL.Float64,
-});
 export const UserRole = IDL.Variant({
   'admin' : IDL.Null,
   'user' : IDL.Null,
   'guest' : IDL.Null,
+});
+export const LanguageType = IDL.Variant({
+  'en' : IDL.Null,
+  'gu' : IDL.Null,
+  'hi' : IDL.Null,
+  'mr' : IDL.Null,
+  'mw' : IDL.Null,
+  'other' : IDL.Text,
+});
+export const ScrapShopStatus = IDL.Variant({
+  'pending' : IDL.Null,
+  'approved' : IDL.Null,
+  'rejected' : IDL.Null,
+});
+export const ScrapShop = IDL.Record({
+  'id' : IDL.Text,
+  'preferredLanguage' : LanguageType,
+  'ownerName' : IDL.Text,
+  'area' : IDL.Text,
+  'city' : IDL.Text,
+  'scrapCategoriesHandled' : IDL.Vec(IDL.Nat),
+  'email' : IDL.Text,
+  'shopName' : IDL.Text,
+  'phone' : IDL.Text,
+  'pincode' : IDL.Text,
+  'registrationStatus' : ScrapShopStatus,
+  'registeredAt' : IDL.Int,
+  'streetAddress' : IDL.Text,
 });
 export const BookingStatus = IDL.Variant({
   'on_the_way' : IDL.Null,
@@ -69,69 +61,11 @@ export const BookingStatus = IDL.Variant({
   'confirmed' : IDL.Null,
   'partner_assigned' : IDL.Null,
 });
-export const Booking = IDL.Record({
-  'id' : IDL.Nat,
-  'status' : BookingStatus,
-  'totalFinalAmount' : IDL.Opt(IDL.Float64),
-  'scheduledTime' : IDL.Int,
-  'userId' : IDL.Principal,
-  'partnerId' : IDL.Opt(IDL.Nat),
-  'addressId' : IDL.Nat,
-  'totalEstimatedAmount' : IDL.Float64,
-});
-export const PaymentMethod = IDL.Variant({
-  'upi' : IDL.Null,
-  'cash' : IDL.Null,
-});
-export const PaymentStatus = IDL.Variant({
-  'pending' : IDL.Null,
-  'completed' : IDL.Null,
-  'refunded' : IDL.Null,
-  'failed' : IDL.Null,
-});
-export const Payment = IDL.Record({
-  'id' : IDL.Nat,
-  'status' : PaymentStatus,
-  'method' : PaymentMethod,
-  'bookingId' : IDL.Nat,
-  'amount' : IDL.Float64,
-  'transactionId' : IDL.Opt(IDL.Text),
-});
 export const UserProfile = IDL.Record({
   'id' : IDL.Principal,
   'profileImage' : IDL.Text,
   'name' : IDL.Text,
   'phone' : IDL.Text,
-});
-export const SupportTicket = IDL.Record({
-  'id' : IDL.Nat,
-  'subject' : IDL.Text,
-  'userId' : IDL.Principal,
-  'message' : IDL.Text,
-  'timestamp' : IDL.Int,
-});
-export const Notification = IDL.Record({
-  'id' : IDL.Nat,
-  'title' : IDL.Text,
-  'userId' : IDL.Principal,
-  'icon' : IDL.Text,
-  'isRead' : IDL.Bool,
-  'message' : IDL.Text,
-  'timestamp' : IDL.Int,
-});
-export const Rating = IDL.Record({
-  'id' : IDL.Nat,
-  'bookingId' : IDL.Nat,
-  'userId' : IDL.Principal,
-  'partnerId' : IDL.Nat,
-  'comment' : IDL.Opt(IDL.Text),
-  'stars' : IDL.Nat,
-});
-export const ScrapRateWithCategory = IDL.Record({
-  'id' : IDL.Nat,
-  'categoryId' : IDL.Nat,
-  'categoryName' : IDL.Text,
-  'pricePerKg' : IDL.Float64,
 });
 
 export const idlService = IDL.Service({
@@ -162,128 +96,55 @@ export const idlService = IDL.Service({
     ),
   '_caffeineStorageUpdateGatewayPrincipals' : IDL.Func([], [], []),
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
-  'addAddress' : IDL.Func(
-      [
-        IDL.Text,
-        IDL.Text,
-        IDL.Text,
-        IDL.Text,
-        IDL.Opt(IDL.Float64),
-        IDL.Opt(IDL.Float64),
-      ],
-      [Address],
-      [],
-    ),
-  'addBookingItem' : IDL.Func(
-      [IDL.Nat, IDL.Nat, IDL.Float64],
-      [BookingItem],
-      [],
-    ),
-  'addPartner' : IDL.Func(
-      [IDL.Text, IDL.Text, IDL.Text, IDL.Float64, IDL.Bool],
-      [Partner],
-      [],
-    ),
-  'addScrapCategory' : IDL.Func(
-      [IDL.Text, IDL.Opt(IDL.Nat), IDL.Text],
-      [ScrapCategory],
-      [],
-    ),
-  'addScrapRate' : IDL.Func([IDL.Nat, IDL.Float64], [ScrapRate], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-  'assignPartnerToBooking' : IDL.Func([IDL.Nat, IDL.Nat], [Booking], []),
-  'autoAssignPartner' : IDL.Func([IDL.Nat], [Booking], []),
-  'clearAllNotifications' : IDL.Func([], [], []),
-  'createBooking' : IDL.Func([IDL.Nat, IDL.Int, IDL.Float64], [Booking], []),
-  'createPayment' : IDL.Func(
-      [IDL.Nat, IDL.Float64, PaymentMethod, IDL.Opt(IDL.Text)],
-      [Payment],
-      [],
-    ),
-  'deleteAddress' : IDL.Func([IDL.Nat], [], []),
-  'getAddressById' : IDL.Func([IDL.Nat], [Address], ['query']),
-  'getAddresses' : IDL.Func([], [IDL.Vec(Address)], ['query']),
-  'getBookingById' : IDL.Func([IDL.Nat], [Booking], ['query']),
-  'getBookingItems' : IDL.Func([IDL.Nat], [IDL.Vec(BookingItem)], ['query']),
+  'getAllScrapShops' : IDL.Func([], [IDL.Vec(ScrapShop)], ['query']),
   'getBookingPhase' : IDL.Func([BookingStatus], [IDL.Text], ['query']),
-  'getBookingsByAddressId' : IDL.Func([IDL.Nat], [IDL.Vec(Booking)], ['query']),
-  'getBookingsByPartnerId' : IDL.Func([IDL.Nat], [IDL.Vec(Booking)], ['query']),
-  'getBookingsByStatus' : IDL.Func(
-      [BookingStatus],
-      [IDL.Vec(Booking)],
-      ['query'],
-    ),
-  'getBookingsByUser' : IDL.Func(
-      [IDL.Principal],
-      [IDL.Vec(Booking)],
-      ['query'],
-    ),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
-  'getMyBookings' : IDL.Func([], [IDL.Vec(Booking)], ['query']),
-  'getMySupportTickets' : IDL.Func([], [IDL.Vec(SupportTicket)], ['query']),
-  'getNotifications' : IDL.Func([], [IDL.Vec(Notification)], ['query']),
-  'getPartnerById' : IDL.Func([IDL.Nat], [Partner], ['query']),
-  'getPartnerByPhone' : IDL.Func([IDL.Text], [IDL.Opt(Partner)], ['query']),
-  'getPartners' : IDL.Func([], [IDL.Vec(Partner)], ['query']),
-  'getPaymentByBookingId' : IDL.Func([IDL.Nat], [IDL.Opt(Payment)], ['query']),
-  'getRatingByBookingId' : IDL.Func([IDL.Nat], [IDL.Opt(Rating)], ['query']),
-  'getScrapCategories' : IDL.Func([], [IDL.Vec(ScrapCategory)], ['query']),
-  'getScrapCategoryById' : IDL.Func([IDL.Nat], [ScrapCategory], ['query']),
-  'getScrapRateByCategoryId' : IDL.Func(
-      [IDL.Nat],
-      [IDL.Opt(ScrapRate)],
-      ['query'],
-    ),
-  'getScrapRates' : IDL.Func([], [IDL.Vec(ScrapRate)], ['query']),
-  'getScrapRatesWithCategories' : IDL.Func(
-      [],
-      [IDL.Vec(ScrapRateWithCategory)],
-      ['query'],
-    ),
-  'getSupportTickets' : IDL.Func([], [IDL.Vec(SupportTicket)], ['query']),
+  'getScrapShopByPhone' : IDL.Func([IDL.Text], [IDL.Opt(ScrapShop)], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
       ['query'],
     ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-  'markAllNotificationsRead' : IDL.Func([], [], []),
-  'partnerAcceptBooking' : IDL.Func([IDL.Nat, IDL.Nat], [Booking], []),
-  'partnerUpdateBookingStatus' : IDL.Func([IDL.Nat, IDL.Nat], [Booking], []),
-  'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
-  'submitRating' : IDL.Func(
-      [IDL.Nat, IDL.Nat, IDL.Nat, IDL.Opt(IDL.Text)],
-      [Rating],
-      [],
-    ),
-  'submitSupportTicket' : IDL.Func([IDL.Text, IDL.Text], [SupportTicket], []),
-  'updateAddress' : IDL.Func(
+  'registerScrapShop' : IDL.Func(
       [
-        IDL.Nat,
         IDL.Text,
         IDL.Text,
         IDL.Text,
         IDL.Text,
-        IDL.Opt(IDL.Float64),
-        IDL.Opt(IDL.Float64),
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Vec(IDL.Nat),
+        IDL.Text,
       ],
-      [Address],
+      [ScrapShop],
       [],
     ),
-  'updateBookingItemFinalWeight' : IDL.Func(
-      [IDL.Nat, IDL.Float64],
-      [BookingItem],
+  'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'updateScrapShop' : IDL.Func(
+      [
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Vec(IDL.Nat),
+      ],
+      [ScrapShop],
       [],
     ),
-  'updateBookingStatus' : IDL.Func([IDL.Nat, BookingStatus], [Booking], []),
-  'updatePartner' : IDL.Func(
-      [IDL.Nat, IDL.Text, IDL.Text, IDL.Text, IDL.Float64, IDL.Bool],
-      [Partner],
+  'updateScrapShopStatus' : IDL.Func(
+      [IDL.Text, ScrapShopStatus],
+      [ScrapShop],
       [],
     ),
-  'updatePaymentStatus' : IDL.Func([IDL.Nat, PaymentStatus], [Payment], []),
-  'updateScrapRate' : IDL.Func([IDL.Nat, IDL.Float64], [ScrapRate], []),
 });
 
 export const idlInitArgs = [];
@@ -300,46 +161,38 @@ export const idlFactory = ({ IDL }) => {
     'success' : IDL.Opt(IDL.Bool),
     'topped_up_amount' : IDL.Opt(IDL.Nat),
   });
-  const Address = IDL.Record({
-    'id' : IDL.Nat,
-    'lat' : IDL.Opt(IDL.Float64),
-    'lng' : IDL.Opt(IDL.Float64),
-    'street' : IDL.Text,
-    'city' : IDL.Text,
-    'userId' : IDL.Principal,
-    'addressLabel' : IDL.Text,
-    'pincode' : IDL.Text,
-  });
-  const BookingItem = IDL.Record({
-    'id' : IDL.Nat,
-    'categoryId' : IDL.Nat,
-    'bookingId' : IDL.Nat,
-    'estimatedWeight' : IDL.Float64,
-    'finalWeight' : IDL.Opt(IDL.Float64),
-  });
-  const Partner = IDL.Record({
-    'id' : IDL.Nat,
-    'active' : IDL.Bool,
-    'name' : IDL.Text,
-    'vehicle' : IDL.Text,
-    'rating' : IDL.Float64,
-    'phone' : IDL.Text,
-  });
-  const ScrapCategory = IDL.Record({
-    'id' : IDL.Nat,
-    'name' : IDL.Text,
-    'unit' : IDL.Text,
-    'parentId' : IDL.Opt(IDL.Nat),
-  });
-  const ScrapRate = IDL.Record({
-    'id' : IDL.Nat,
-    'categoryId' : IDL.Nat,
-    'pricePerKg' : IDL.Float64,
-  });
   const UserRole = IDL.Variant({
     'admin' : IDL.Null,
     'user' : IDL.Null,
     'guest' : IDL.Null,
+  });
+  const LanguageType = IDL.Variant({
+    'en' : IDL.Null,
+    'gu' : IDL.Null,
+    'hi' : IDL.Null,
+    'mr' : IDL.Null,
+    'mw' : IDL.Null,
+    'other' : IDL.Text,
+  });
+  const ScrapShopStatus = IDL.Variant({
+    'pending' : IDL.Null,
+    'approved' : IDL.Null,
+    'rejected' : IDL.Null,
+  });
+  const ScrapShop = IDL.Record({
+    'id' : IDL.Text,
+    'preferredLanguage' : LanguageType,
+    'ownerName' : IDL.Text,
+    'area' : IDL.Text,
+    'city' : IDL.Text,
+    'scrapCategoriesHandled' : IDL.Vec(IDL.Nat),
+    'email' : IDL.Text,
+    'shopName' : IDL.Text,
+    'phone' : IDL.Text,
+    'pincode' : IDL.Text,
+    'registrationStatus' : ScrapShopStatus,
+    'registeredAt' : IDL.Int,
+    'streetAddress' : IDL.Text,
   });
   const BookingStatus = IDL.Variant({
     'on_the_way' : IDL.Null,
@@ -350,66 +203,11 @@ export const idlFactory = ({ IDL }) => {
     'confirmed' : IDL.Null,
     'partner_assigned' : IDL.Null,
   });
-  const Booking = IDL.Record({
-    'id' : IDL.Nat,
-    'status' : BookingStatus,
-    'totalFinalAmount' : IDL.Opt(IDL.Float64),
-    'scheduledTime' : IDL.Int,
-    'userId' : IDL.Principal,
-    'partnerId' : IDL.Opt(IDL.Nat),
-    'addressId' : IDL.Nat,
-    'totalEstimatedAmount' : IDL.Float64,
-  });
-  const PaymentMethod = IDL.Variant({ 'upi' : IDL.Null, 'cash' : IDL.Null });
-  const PaymentStatus = IDL.Variant({
-    'pending' : IDL.Null,
-    'completed' : IDL.Null,
-    'refunded' : IDL.Null,
-    'failed' : IDL.Null,
-  });
-  const Payment = IDL.Record({
-    'id' : IDL.Nat,
-    'status' : PaymentStatus,
-    'method' : PaymentMethod,
-    'bookingId' : IDL.Nat,
-    'amount' : IDL.Float64,
-    'transactionId' : IDL.Opt(IDL.Text),
-  });
   const UserProfile = IDL.Record({
     'id' : IDL.Principal,
     'profileImage' : IDL.Text,
     'name' : IDL.Text,
     'phone' : IDL.Text,
-  });
-  const SupportTicket = IDL.Record({
-    'id' : IDL.Nat,
-    'subject' : IDL.Text,
-    'userId' : IDL.Principal,
-    'message' : IDL.Text,
-    'timestamp' : IDL.Int,
-  });
-  const Notification = IDL.Record({
-    'id' : IDL.Nat,
-    'title' : IDL.Text,
-    'userId' : IDL.Principal,
-    'icon' : IDL.Text,
-    'isRead' : IDL.Bool,
-    'message' : IDL.Text,
-    'timestamp' : IDL.Int,
-  });
-  const Rating = IDL.Record({
-    'id' : IDL.Nat,
-    'bookingId' : IDL.Nat,
-    'userId' : IDL.Principal,
-    'partnerId' : IDL.Nat,
-    'comment' : IDL.Opt(IDL.Text),
-    'stars' : IDL.Nat,
-  });
-  const ScrapRateWithCategory = IDL.Record({
-    'id' : IDL.Nat,
-    'categoryId' : IDL.Nat,
-    'categoryName' : IDL.Text,
-    'pricePerKg' : IDL.Float64,
   });
   
   return IDL.Service({
@@ -440,140 +238,59 @@ export const idlFactory = ({ IDL }) => {
       ),
     '_caffeineStorageUpdateGatewayPrincipals' : IDL.Func([], [], []),
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
-    'addAddress' : IDL.Func(
-        [
-          IDL.Text,
-          IDL.Text,
-          IDL.Text,
-          IDL.Text,
-          IDL.Opt(IDL.Float64),
-          IDL.Opt(IDL.Float64),
-        ],
-        [Address],
-        [],
-      ),
-    'addBookingItem' : IDL.Func(
-        [IDL.Nat, IDL.Nat, IDL.Float64],
-        [BookingItem],
-        [],
-      ),
-    'addPartner' : IDL.Func(
-        [IDL.Text, IDL.Text, IDL.Text, IDL.Float64, IDL.Bool],
-        [Partner],
-        [],
-      ),
-    'addScrapCategory' : IDL.Func(
-        [IDL.Text, IDL.Opt(IDL.Nat), IDL.Text],
-        [ScrapCategory],
-        [],
-      ),
-    'addScrapRate' : IDL.Func([IDL.Nat, IDL.Float64], [ScrapRate], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-    'assignPartnerToBooking' : IDL.Func([IDL.Nat, IDL.Nat], [Booking], []),
-    'autoAssignPartner' : IDL.Func([IDL.Nat], [Booking], []),
-    'clearAllNotifications' : IDL.Func([], [], []),
-    'createBooking' : IDL.Func([IDL.Nat, IDL.Int, IDL.Float64], [Booking], []),
-    'createPayment' : IDL.Func(
-        [IDL.Nat, IDL.Float64, PaymentMethod, IDL.Opt(IDL.Text)],
-        [Payment],
-        [],
-      ),
-    'deleteAddress' : IDL.Func([IDL.Nat], [], []),
-    'getAddressById' : IDL.Func([IDL.Nat], [Address], ['query']),
-    'getAddresses' : IDL.Func([], [IDL.Vec(Address)], ['query']),
-    'getBookingById' : IDL.Func([IDL.Nat], [Booking], ['query']),
-    'getBookingItems' : IDL.Func([IDL.Nat], [IDL.Vec(BookingItem)], ['query']),
+    'getAllScrapShops' : IDL.Func([], [IDL.Vec(ScrapShop)], ['query']),
     'getBookingPhase' : IDL.Func([BookingStatus], [IDL.Text], ['query']),
-    'getBookingsByAddressId' : IDL.Func(
-        [IDL.Nat],
-        [IDL.Vec(Booking)],
-        ['query'],
-      ),
-    'getBookingsByPartnerId' : IDL.Func(
-        [IDL.Nat],
-        [IDL.Vec(Booking)],
-        ['query'],
-      ),
-    'getBookingsByStatus' : IDL.Func(
-        [BookingStatus],
-        [IDL.Vec(Booking)],
-        ['query'],
-      ),
-    'getBookingsByUser' : IDL.Func(
-        [IDL.Principal],
-        [IDL.Vec(Booking)],
-        ['query'],
-      ),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
-    'getMyBookings' : IDL.Func([], [IDL.Vec(Booking)], ['query']),
-    'getMySupportTickets' : IDL.Func([], [IDL.Vec(SupportTicket)], ['query']),
-    'getNotifications' : IDL.Func([], [IDL.Vec(Notification)], ['query']),
-    'getPartnerById' : IDL.Func([IDL.Nat], [Partner], ['query']),
-    'getPartnerByPhone' : IDL.Func([IDL.Text], [IDL.Opt(Partner)], ['query']),
-    'getPartners' : IDL.Func([], [IDL.Vec(Partner)], ['query']),
-    'getPaymentByBookingId' : IDL.Func(
-        [IDL.Nat],
-        [IDL.Opt(Payment)],
+    'getScrapShopByPhone' : IDL.Func(
+        [IDL.Text],
+        [IDL.Opt(ScrapShop)],
         ['query'],
       ),
-    'getRatingByBookingId' : IDL.Func([IDL.Nat], [IDL.Opt(Rating)], ['query']),
-    'getScrapCategories' : IDL.Func([], [IDL.Vec(ScrapCategory)], ['query']),
-    'getScrapCategoryById' : IDL.Func([IDL.Nat], [ScrapCategory], ['query']),
-    'getScrapRateByCategoryId' : IDL.Func(
-        [IDL.Nat],
-        [IDL.Opt(ScrapRate)],
-        ['query'],
-      ),
-    'getScrapRates' : IDL.Func([], [IDL.Vec(ScrapRate)], ['query']),
-    'getScrapRatesWithCategories' : IDL.Func(
-        [],
-        [IDL.Vec(ScrapRateWithCategory)],
-        ['query'],
-      ),
-    'getSupportTickets' : IDL.Func([], [IDL.Vec(SupportTicket)], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
         ['query'],
       ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-    'markAllNotificationsRead' : IDL.Func([], [], []),
-    'partnerAcceptBooking' : IDL.Func([IDL.Nat, IDL.Nat], [Booking], []),
-    'partnerUpdateBookingStatus' : IDL.Func([IDL.Nat, IDL.Nat], [Booking], []),
-    'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
-    'submitRating' : IDL.Func(
-        [IDL.Nat, IDL.Nat, IDL.Nat, IDL.Opt(IDL.Text)],
-        [Rating],
-        [],
-      ),
-    'submitSupportTicket' : IDL.Func([IDL.Text, IDL.Text], [SupportTicket], []),
-    'updateAddress' : IDL.Func(
+    'registerScrapShop' : IDL.Func(
         [
-          IDL.Nat,
           IDL.Text,
           IDL.Text,
           IDL.Text,
           IDL.Text,
-          IDL.Opt(IDL.Float64),
-          IDL.Opt(IDL.Float64),
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Vec(IDL.Nat),
+          IDL.Text,
         ],
-        [Address],
+        [ScrapShop],
         [],
       ),
-    'updateBookingItemFinalWeight' : IDL.Func(
-        [IDL.Nat, IDL.Float64],
-        [BookingItem],
+    'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'updateScrapShop' : IDL.Func(
+        [
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Vec(IDL.Nat),
+        ],
+        [ScrapShop],
         [],
       ),
-    'updateBookingStatus' : IDL.Func([IDL.Nat, BookingStatus], [Booking], []),
-    'updatePartner' : IDL.Func(
-        [IDL.Nat, IDL.Text, IDL.Text, IDL.Text, IDL.Float64, IDL.Bool],
-        [Partner],
+    'updateScrapShopStatus' : IDL.Func(
+        [IDL.Text, ScrapShopStatus],
+        [ScrapShop],
         [],
       ),
-    'updatePaymentStatus' : IDL.Func([IDL.Nat, PaymentStatus], [Payment], []),
-    'updateScrapRate' : IDL.Func([IDL.Nat, IDL.Float64], [ScrapRate], []),
   });
 };
 

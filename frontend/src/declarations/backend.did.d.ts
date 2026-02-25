@@ -10,33 +10,6 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
-export interface Address {
-  'id' : bigint,
-  'lat' : [] | [number],
-  'lng' : [] | [number],
-  'street' : string,
-  'city' : string,
-  'userId' : Principal,
-  'addressLabel' : string,
-  'pincode' : string,
-}
-export interface Booking {
-  'id' : bigint,
-  'status' : BookingStatus,
-  'totalFinalAmount' : [] | [number],
-  'scheduledTime' : bigint,
-  'userId' : Principal,
-  'partnerId' : [] | [bigint],
-  'addressId' : bigint,
-  'totalEstimatedAmount' : number,
-}
-export interface BookingItem {
-  'id' : bigint,
-  'categoryId' : bigint,
-  'bookingId' : bigint,
-  'estimatedWeight' : number,
-  'finalWeight' : [] | [number],
-}
 export type BookingStatus = { 'on_the_way' : null } |
   { 'cancelled' : null } |
   { 'pending' : null } |
@@ -44,69 +17,30 @@ export type BookingStatus = { 'on_the_way' : null } |
   { 'completed' : null } |
   { 'confirmed' : null } |
   { 'partner_assigned' : null };
-export interface Notification {
-  'id' : bigint,
-  'title' : string,
-  'userId' : Principal,
-  'icon' : string,
-  'isRead' : boolean,
-  'message' : string,
-  'timestamp' : bigint,
-}
-export interface Partner {
-  'id' : bigint,
-  'active' : boolean,
-  'name' : string,
-  'vehicle' : string,
-  'rating' : number,
+export type LanguageType = { 'en' : null } |
+  { 'gu' : null } |
+  { 'hi' : null } |
+  { 'mr' : null } |
+  { 'mw' : null } |
+  { 'other' : string };
+export interface ScrapShop {
+  'id' : string,
+  'preferredLanguage' : LanguageType,
+  'ownerName' : string,
+  'area' : string,
+  'city' : string,
+  'scrapCategoriesHandled' : Array<bigint>,
+  'email' : string,
+  'shopName' : string,
   'phone' : string,
+  'pincode' : string,
+  'registrationStatus' : ScrapShopStatus,
+  'registeredAt' : bigint,
+  'streetAddress' : string,
 }
-export interface Payment {
-  'id' : bigint,
-  'status' : PaymentStatus,
-  'method' : PaymentMethod,
-  'bookingId' : bigint,
-  'amount' : number,
-  'transactionId' : [] | [string],
-}
-export type PaymentMethod = { 'upi' : null } |
-  { 'cash' : null };
-export type PaymentStatus = { 'pending' : null } |
-  { 'completed' : null } |
-  { 'refunded' : null } |
-  { 'failed' : null };
-export interface Rating {
-  'id' : bigint,
-  'bookingId' : bigint,
-  'userId' : Principal,
-  'partnerId' : bigint,
-  'comment' : [] | [string],
-  'stars' : bigint,
-}
-export interface ScrapCategory {
-  'id' : bigint,
-  'name' : string,
-  'unit' : string,
-  'parentId' : [] | [bigint],
-}
-export interface ScrapRate {
-  'id' : bigint,
-  'categoryId' : bigint,
-  'pricePerKg' : number,
-}
-export interface ScrapRateWithCategory {
-  'id' : bigint,
-  'categoryId' : bigint,
-  'categoryName' : string,
-  'pricePerKg' : number,
-}
-export interface SupportTicket {
-  'id' : bigint,
-  'subject' : string,
-  'userId' : Principal,
-  'message' : string,
-  'timestamp' : bigint,
-}
+export type ScrapShopStatus = { 'pending' : null } |
+  { 'approved' : null } |
+  { 'rejected' : null };
 export interface UserProfile {
   'id' : Principal,
   'profileImage' : string,
@@ -144,75 +78,45 @@ export interface _SERVICE {
   >,
   '_caffeineStorageUpdateGatewayPrincipals' : ActorMethod<[], undefined>,
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
-  'addAddress' : ActorMethod<
-    [string, string, string, string, [] | [number], [] | [number]],
-    Address
-  >,
-  'addBookingItem' : ActorMethod<[bigint, bigint, number], BookingItem>,
-  'addPartner' : ActorMethod<
-    [string, string, string, number, boolean],
-    Partner
-  >,
-  'addScrapCategory' : ActorMethod<
-    [string, [] | [bigint], string],
-    ScrapCategory
-  >,
-  'addScrapRate' : ActorMethod<[bigint, number], ScrapRate>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
-  'assignPartnerToBooking' : ActorMethod<[bigint, bigint], Booking>,
-  'autoAssignPartner' : ActorMethod<[bigint], Booking>,
-  'clearAllNotifications' : ActorMethod<[], undefined>,
-  'createBooking' : ActorMethod<[bigint, bigint, number], Booking>,
-  'createPayment' : ActorMethod<
-    [bigint, number, PaymentMethod, [] | [string]],
-    Payment
-  >,
-  'deleteAddress' : ActorMethod<[bigint], undefined>,
-  'getAddressById' : ActorMethod<[bigint], Address>,
-  'getAddresses' : ActorMethod<[], Array<Address>>,
-  'getBookingById' : ActorMethod<[bigint], Booking>,
-  'getBookingItems' : ActorMethod<[bigint], Array<BookingItem>>,
+  'getAllScrapShops' : ActorMethod<[], Array<ScrapShop>>,
   'getBookingPhase' : ActorMethod<[BookingStatus], string>,
-  'getBookingsByAddressId' : ActorMethod<[bigint], Array<Booking>>,
-  'getBookingsByPartnerId' : ActorMethod<[bigint], Array<Booking>>,
-  'getBookingsByStatus' : ActorMethod<[BookingStatus], Array<Booking>>,
-  'getBookingsByUser' : ActorMethod<[Principal], Array<Booking>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
-  'getMyBookings' : ActorMethod<[], Array<Booking>>,
-  'getMySupportTickets' : ActorMethod<[], Array<SupportTicket>>,
-  'getNotifications' : ActorMethod<[], Array<Notification>>,
-  'getPartnerById' : ActorMethod<[bigint], Partner>,
-  'getPartnerByPhone' : ActorMethod<[string], [] | [Partner]>,
-  'getPartners' : ActorMethod<[], Array<Partner>>,
-  'getPaymentByBookingId' : ActorMethod<[bigint], [] | [Payment]>,
-  'getRatingByBookingId' : ActorMethod<[bigint], [] | [Rating]>,
-  'getScrapCategories' : ActorMethod<[], Array<ScrapCategory>>,
-  'getScrapCategoryById' : ActorMethod<[bigint], ScrapCategory>,
-  'getScrapRateByCategoryId' : ActorMethod<[bigint], [] | [ScrapRate]>,
-  'getScrapRates' : ActorMethod<[], Array<ScrapRate>>,
-  'getScrapRatesWithCategories' : ActorMethod<[], Array<ScrapRateWithCategory>>,
-  'getSupportTickets' : ActorMethod<[], Array<SupportTicket>>,
+  'getScrapShopByPhone' : ActorMethod<[string], [] | [ScrapShop]>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
-  'markAllNotificationsRead' : ActorMethod<[], undefined>,
-  'partnerAcceptBooking' : ActorMethod<[bigint, bigint], Booking>,
-  'partnerUpdateBookingStatus' : ActorMethod<[bigint, bigint], Booking>,
+  'registerScrapShop' : ActorMethod<
+    [
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      Array<bigint>,
+      string,
+    ],
+    ScrapShop
+  >,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
-  'submitRating' : ActorMethod<[bigint, bigint, bigint, [] | [string]], Rating>,
-  'submitSupportTicket' : ActorMethod<[string, string], SupportTicket>,
-  'updateAddress' : ActorMethod<
-    [bigint, string, string, string, string, [] | [number], [] | [number]],
-    Address
+  'updateScrapShop' : ActorMethod<
+    [
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      Array<bigint>,
+    ],
+    ScrapShop
   >,
-  'updateBookingItemFinalWeight' : ActorMethod<[bigint, number], BookingItem>,
-  'updateBookingStatus' : ActorMethod<[bigint, BookingStatus], Booking>,
-  'updatePartner' : ActorMethod<
-    [bigint, string, string, string, number, boolean],
-    Partner
-  >,
-  'updatePaymentStatus' : ActorMethod<[bigint, PaymentStatus], Payment>,
-  'updateScrapRate' : ActorMethod<[bigint, number], ScrapRate>,
+  'updateScrapShopStatus' : ActorMethod<[string, ScrapShopStatus], ScrapShop>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

@@ -1,63 +1,110 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Deploy Bhangar Wala to IC Mainnet",
+  "title": "Switch authentication to Internet Identity (Google, Apple, Microsoft, passkey)",
   "requirements": [
     {
-      "id": "REQ-35",
-      "summary": "Configure frontend for mainnet deployment and ensure PWA assets are production-ready",
+      "id": "REQ-47",
+      "summary": "Replace phone OTP login with Internet Identity authentication on Login screen",
       "acceptanceCriteria": [
-        "The backend Motoko canister is deployed to the IC mainnet and all existing API methods are callable.",
-        "The frontend React PWA is deployed to the IC mainnet and accessible via a public https://<canister-id>.icp0.io URL.",
-        "All existing features (auth, bookings, payments, notifications, etc.) function correctly on the live deployment.",
-        "The PWA manifest and service worker are served correctly on the live URL.",
-        "The app loads without errors on mobile browsers when accessed via the live URL."
+        "The Login screen shows a single 'Sign In with Internet Identity' button and no phone/OTP fields",
+        "Tapping the button opens the Internet Identity popup which offers Google, Apple, Microsoft, and passkey sign-in options",
+        "After successful Internet Identity login, users without a profile are redirected to `/profile-setup`",
+        "After successful Internet Identity login, returning users with an existing profile are redirected to `/home`",
+        "The `/otp-verification` route no longer exists and navigating to it redirects to `/login`",
+        "The Splash screen redirect logic uses the Internet Identity session (via `useInternetIdentity`) instead of localStorage to determine authentication state"
       ],
       "file_operations": [
         {
-          "path": "frontend/index.html",
+          "path": "frontend/src/pages/Login.tsx",
           "operation": "modify",
-          "description": "Verify meta tags, PWA manifest link, and icon references are correctly configured for production deployment. Ensure the manifest.json link path and apple-touch-icon are relative paths that will resolve correctly when served from the IC canister."
+          "description": "Replace phone number input, country code selector, OTP fields, and terms checkbox with a single 'Sign In with Internet Identity' button. Use the `useInternetIdentity` hook (already imported) to trigger login via the `login()` method. After successful login, check if a user profile exists using the `getCallerUserProfile` backend method via `useGetCallerUserProfile`. If no profile exists, navigate to `/profile-setup`; if a profile exists, navigate to `/home`. Remove all phone number and OTP form state and validation logic."
         },
         {
-          "path": "frontend/public/manifest.json",
+          "path": "frontend/src/App.tsx",
           "operation": "modify",
-          "description": "Verify the PWA manifest contains correct icon paths pointing to frontend/public/assets/generated/bhangar-wala-icon-192.dim_192x192.png and frontend/public/assets/generated/bhangar-wala-icon-512.dim_512x512.png. Ensure start_url, scope, and theme_color are production-ready. Confirm display mode is set to 'standalone' for native app-like experience."
-        },
-        {
-          "path": "frontend/public/sw.js",
-          "operation": "modify",
-          "description": "Review service worker cache configuration for production deployment. Ensure cache names include a version identifier for cache busting. Verify cache-first strategy for static assets includes all generated images under frontend/public/assets/generated/. Confirm network-first strategy correctly handles IC canister API calls. Add proper error handling for offline scenarios."
-        },
-        {
-          "path": "frontend/src/main.tsx",
-          "operation": "modify",
-          "description": "Verify service worker registration is enabled and functioning correctly for production. Ensure the service worker path resolves correctly when deployed to IC. Add console logging for service worker registration success/failure to aid in production debugging."
-        },
-        {
-          "path": "frontend/src/hooks/useActor.ts",
-          "operation": "modify",
-          "description": "Verify the canister ID configuration will correctly resolve to the mainnet canister after deployment. Ensure the actor creation logic handles mainnet-specific settings. Confirm the initialization check that sets the first admin works correctly on mainnet with Internet Identity authentication."
-        },
-        {
-          "path": "frontend/src/hooks/useInternetIdentity.ts",
-          "operation": "modify",
-          "description": "Verify Internet Identity configuration uses the correct mainnet identity provider URL (https://identity.ic0.app). Ensure the derivation origin is correctly set for mainnet. Confirm the authentication flow works with the production IC environment and that login/logout functionality clears all cached data properly."
-        },
+          "description": "Remove the `/otp-verification` route registration. Add a redirect or fallback so that any attempt to navigate to `/otp-verification` redirects to `/login`."
+        }
+      ]
+    },
+    {
+      "id": "REQ-48",
+      "summary": "Update Splash screen to use Internet Identity for authentication state",
+      "acceptanceCriteria": [
+        "Splash screen reads auth state from `useInternetIdentity` hook",
+        "Authenticated users are auto-redirected to `/home` after the splash delay",
+        "Unauthenticated users are auto-redirected to `/login` after the splash delay"
+      ],
+      "file_operations": [
         {
           "path": "frontend/src/pages/Splash.tsx",
           "operation": "modify",
-          "description": "Verify the splash screen logo references the correct asset path frontend/public/assets/generated/logo.dim_256x256.png and that the loading animation displays correctly on the live deployment. Ensure the authentication check and redirect logic works properly with mainnet Internet Identity."
-        },
+          "description": "Replace localStorage-based authentication check with the `useInternetIdentity` hook. Read `isAuthenticated` or `identity` from the hook to determine if the user is logged in. After the 2.2-second splash delay, redirect authenticated users to `/home` and unauthenticated users to `/login`. Remove any references to localStorage phone keys or OTP session keys."
+        }
+      ]
+    },
+    {
+      "id": "REQ-49",
+      "summary": "Update Profile screen Logout button to use Internet Identity logout",
+      "acceptanceCriteria": [
+        "Tapping 'Logout' calls the Internet Identity `logout` method",
+        "User is redirected to `/login` after logout",
+        "Internet Identity session is fully cleared on logout"
+      ],
+      "file_operations": [
         {
-          "path": "frontend/src/index.css",
+          "path": "frontend/src/pages/Profile.tsx",
           "operation": "modify",
-          "description": "Review global styles, custom CSS properties, and design tokens to ensure they render correctly on the live IC deployment. Verify that all imported fonts load properly from their CDN sources. Confirm dark mode color tokens work as expected."
-        },
+          "description": "Replace the logout logic that clears localStorage with a call to the `clear()` method from the `useInternetIdentity` hook. Use the `useQueryClient` to clear all cached queries after logout. After logout completes, navigate to `/login`. Remove any references to localStorage phone keys or OTP session keys."
+        }
+      ]
+    },
+    {
+      "id": "REQ-50",
+      "summary": "Update Layout component to use Internet Identity for route protection",
+      "acceptanceCriteria": [
+        "Layout uses `useInternetIdentity` isAuthenticated/identity to guard protected routes",
+        "Unauthenticated access to any layout-wrapped route redirects to `/login`",
+        "No longer reads a phone OTP session key from localStorage for auth checks"
+      ],
+      "file_operations": [
         {
-          "path": "frontend/tailwind.config.js",
+          "path": "frontend/src/components/Layout.tsx",
           "operation": "modify",
-          "description": "Verify Tailwind configuration is optimized for production with proper purge/content settings to minimize CSS bundle size. Ensure custom colors using OKLCH, animations, and shadows are production-ready. Confirm the configuration doesn't reference any development-only settings."
+          "description": "Replace localStorage-based authentication check with the `useInternetIdentity` hook. Read `isAuthenticated` or `identity` from the hook to determine if the user is logged in. If the user is not authenticated, redirect to `/login`. Remove any references to localStorage phone keys or OTP session keys for authentication checks."
+        }
+      ]
+    },
+    {
+      "id": "REQ-51",
+      "summary": "Update Profile Setup screen to use Internet Identity principal as user identifier",
+      "acceptanceCriteria": [
+        "Profile Setup uses the Internet Identity principal as the user identifier",
+        "Phone number field is optional on the profile setup form",
+        "Saving the profile calls the backend with the principal-derived user ID",
+        "On save, user is navigated to `/home`"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/ProfileSetup.tsx",
+          "operation": "modify",
+          "description": "Replace phone number lookup from localStorage with the Internet Identity principal obtained via `useInternetIdentity`. Use `identity.getPrincipal()` to derive the user identifier. Make the phone number field optional on the form (update validation and UI to reflect this). When calling `saveCallerUserProfile`, pass the principal-derived user ID. After successfully saving the profile, navigate to `/home`. Remove any references to localStorage phone keys."
+        }
+      ]
+    },
+    {
+      "id": "REQ-52",
+      "summary": "Update frontend query hooks to use Internet Identity principal instead of phone number",
+      "acceptanceCriteria": [
+        "All backend calls that previously used a localStorage phone key now use the Internet Identity principal",
+        "User-scoped queries (bookings, addresses, notifications, profile) return data for the authenticated principal",
+        "No query hook reads `phone` from localStorage as the primary user identifier"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Replace all localStorage phone lookups with the Internet Identity principal obtained from the actor context. For user-scoped queries (bookings, addresses, notifications, profile), ensure they use the authenticated principal as the user identifier when calling backend methods. Remove any code that reads a phone number from localStorage as the primary user identifier. Verify that all query hooks that interact with user-specific data now rely on the principal from the `useActor` or `useInternetIdentity` hooks."
         }
       ]
     }

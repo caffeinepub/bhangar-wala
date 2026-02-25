@@ -1,38 +1,132 @@
 {
   "kind": "build_request",
-  "title": "Deploy app to mainnet (go live)",
+  "title": "Switch authentication to Internet Identity (Google, Apple, Microsoft, passkey)",
   "projectName": "Bhangar Wala",
-  "priority": "high",
+  "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-35",
-      "text": "Deploy the full Bhangar Wala application (backend Motoko canister and frontend React PWA) to the Internet Computer mainnet so the app is publicly accessible via a live IC URL.",
-      "target": "both",
+      "id": "REQ-47",
+      "text": "Replace the simulated phone OTP login flow with Internet Identity authentication. Update the Login screen (`/login`) to display a single 'Sign In' button (replacing the phone number input, country code selector, OTP fields, and terms checkbox). Tapping 'Sign In' triggers the Internet Identity login popup using the `useInternetIdentity` hook already available at `frontend/src/hooks/useInternetIdentity.ts`. After successful login, check whether a user profile exists in the backend: if no profile exists, navigate to `/profile-setup`; if a profile exists, navigate to `/home`. Remove the `/otp-verification` route and page.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-4"
+          "msg-last"
         ],
         "quotes": [
-          "make it live"
+          "Google, Apple, Microsoft, or passkey"
         ]
       },
       "acceptanceCriteria": [
-        "The backend Motoko canister is deployed to the IC mainnet and all existing API methods are callable.",
-        "The frontend React PWA is deployed to the IC mainnet and accessible via a public https://<canister-id>.icp0.io URL.",
-        "All existing features (auth, bookings, payments, notifications, etc.) function correctly on the live deployment.",
-        "The PWA manifest and service worker are served correctly on the live URL.",
-        "The app loads without errors on mobile browsers when accessed via the live URL."
+        "The Login screen shows a single 'Sign In with Internet Identity' button and no phone/OTP fields",
+        "Tapping the button opens the Internet Identity popup which offers Google, Apple, Microsoft, and passkey sign-in options",
+        "After successful Internet Identity login, users without a profile are redirected to `/profile-setup`",
+        "After successful Internet Identity login, returning users with an existing profile are redirected to `/home`",
+        "The `/otp-verification` route no longer exists and navigating to it redirects to `/login`",
+        "The Splash screen redirect logic uses the Internet Identity session (via `useInternetIdentity`) instead of localStorage to determine authentication state"
+      ]
+    },
+    {
+      "id": "REQ-48",
+      "text": "Update the Splash screen (`/splash`) to determine authentication state using the `useInternetIdentity` hook's identity/isAuthenticated value instead of checking localStorage for a phone OTP session. If authenticated, redirect to `/home`; otherwise redirect to `/login`.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "Google, Apple, Microsoft, or passkey"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Splash screen reads auth state from `useInternetIdentity` hook",
+        "Authenticated users are auto-redirected to `/home` after the splash delay",
+        "Unauthenticated users are auto-redirected to `/login` after the splash delay"
+      ]
+    },
+    {
+      "id": "REQ-49",
+      "text": "Update the Logout button on the Profile screen (`/profile`) to call the `logout` method from the `useInternetIdentity` hook instead of simply clearing localStorage. After logout, redirect to `/login`.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "Google, Apple, Microsoft, or passkey"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Tapping 'Logout' calls the Internet Identity `logout` method",
+        "User is redirected to `/login` after logout",
+        "Internet Identity session is fully cleared on logout"
+      ]
+    },
+    {
+      "id": "REQ-50",
+      "text": "Update the Layout component (`frontend/src/components/Layout.tsx`) to use the `useInternetIdentity` hook to detect authentication instead of reading from localStorage. Unauthenticated users accessing protected routes should be redirected to `/login`.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "Google, Apple, Microsoft, or passkey"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Layout uses `useInternetIdentity` isAuthenticated/identity to guard protected routes",
+        "Unauthenticated access to any layout-wrapped route redirects to `/login`",
+        "No longer reads a phone OTP session key from localStorage for auth checks"
+      ]
+    },
+    {
+      "id": "REQ-51",
+      "text": "Update the Profile Setup screen (`/profile-setup`) to derive the user identifier from the Internet Identity principal (via `useInternetIdentity`) rather than from a phone number stored in localStorage. Use the principal text as the user ID when calling the backend `createUserProfile` method. Since phone number is no longer collected during login, make the phone field on the profile setup form optional.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "Google, Apple, Microsoft, or passkey"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Profile Setup uses the Internet Identity principal as the user identifier",
+        "Phone number field is optional on the profile setup form",
+        "Saving the profile calls the backend with the principal-derived user ID",
+        "On save, user is navigated to `/home`"
+      ]
+    },
+    {
+      "id": "REQ-52",
+      "text": "Update all frontend query hooks in `frontend/src/hooks/useQueries.ts` that currently look up the current user by phone number from localStorage to instead use the Internet Identity principal obtained from the `useActor` / `useInternetIdentity` hooks as the user identifier for backend calls.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "Google, Apple, Microsoft, or passkey"
+        ]
+      },
+      "acceptanceCriteria": [
+        "All backend calls that previously used a localStorage phone key now use the Internet Identity principal",
+        "User-scoped queries (bookings, addresses, notifications, profile) return data for the authenticated principal",
+        "No query hook reads `phone` from localStorage as the primary user identifier"
       ]
     }
   ],
   "constraints": [
-    "Do not alter any existing feature logic or UI during deployment preparation.",
-    "Do not modify files under frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, or frontend/src/components/ui."
+    "Do not modify `frontend/src/hooks/useInternetIdentity.ts` or `frontend/src/hooks/useActor.ts` — these are immutable",
+    "Do not modify `frontend/src/main.tsx` — it already wraps the app with InternetIdentityProvider",
+    "The backend Motoko actor should not require schema changes solely for this auth switch; use the existing principal-based identity where possible"
   ],
   "nonGoals": [
-    "Adding new features or screens.",
-    "Changing the visual design or theme.",
-    "Modifying backend data models or seeding additional data."
+    "Adding any third-party OAuth providers directly (only Internet Identity is supported by the platform)",
+    "Keeping the phone OTP flow as a fallback or secondary option",
+    "Changing the backend data model or adding new backend methods for this auth switch",
+    "Modifying admin or partner panel authentication"
   ],
   "imageRequirements": {
     "required": [],

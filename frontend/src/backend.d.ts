@@ -7,95 +7,45 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
+export type LanguageType = {
+    __kind__: "en";
+    en: null;
+} | {
+    __kind__: "gu";
+    gu: null;
+} | {
+    __kind__: "hi";
+    hi: null;
+} | {
+    __kind__: "mr";
+    mr: null;
+} | {
+    __kind__: "mw";
+    mw: null;
+} | {
+    __kind__: "other";
+    other: string;
+};
 export interface UserProfile {
     id: Principal;
     profileImage: string;
     name: string;
     phone: string;
 }
-export interface SupportTicket {
-    id: bigint;
-    subject: string;
-    userId: Principal;
-    message: string;
-    timestamp: bigint;
-}
-export interface BookingItem {
-    id: bigint;
-    categoryId: bigint;
-    bookingId: bigint;
-    estimatedWeight: number;
-    finalWeight?: number;
-}
-export interface Rating {
-    id: bigint;
-    bookingId: bigint;
-    userId: Principal;
-    partnerId: bigint;
-    comment?: string;
-    stars: bigint;
-}
-export interface Address {
-    id: bigint;
-    lat?: number;
-    lng?: number;
-    street: string;
+export interface ScrapShop {
+    id: string;
+    preferredLanguage: LanguageType;
+    ownerName: string;
+    area: string;
     city: string;
-    userId: Principal;
-    addressLabel: string;
-    pincode: string;
-}
-export interface Partner {
-    id: bigint;
-    active: boolean;
-    name: string;
-    vehicle: string;
-    rating: number;
+    scrapCategoriesHandled: Array<bigint>;
+    email: string;
+    shopName: string;
     phone: string;
-}
-export interface Payment {
-    id: bigint;
-    status: PaymentStatus;
-    method: PaymentMethod;
-    bookingId: bigint;
-    amount: number;
-    transactionId?: string;
-}
-export interface Notification {
-    id: bigint;
-    title: string;
-    userId: Principal;
-    icon: string;
-    isRead: boolean;
-    message: string;
-    timestamp: bigint;
-}
-export interface ScrapRate {
-    id: bigint;
-    categoryId: bigint;
-    pricePerKg: number;
-}
-export interface Booking {
-    id: bigint;
-    status: BookingStatus;
-    totalFinalAmount?: number;
-    scheduledTime: bigint;
-    userId: Principal;
-    partnerId?: bigint;
-    addressId: bigint;
-    totalEstimatedAmount: number;
-}
-export interface ScrapCategory {
-    id: bigint;
-    name: string;
-    unit: string;
-    parentId?: bigint;
-}
-export interface ScrapRateWithCategory {
-    id: bigint;
-    categoryId: bigint;
-    categoryName: string;
-    pricePerKg: number;
+    pincode: string;
+    registrationStatus: ScrapShopStatus;
+    registeredAt: bigint;
+    streetAddress: string;
 }
 export enum BookingStatus {
     on_the_way = "on_the_way",
@@ -106,15 +56,10 @@ export enum BookingStatus {
     confirmed = "confirmed",
     partner_assigned = "partner_assigned"
 }
-export enum PaymentMethod {
-    upi = "upi",
-    cash = "cash"
-}
-export enum PaymentStatus {
+export enum ScrapShopStatus {
     pending = "pending",
-    completed = "completed",
-    refunded = "refunded",
-    failed = "failed"
+    approved = "approved",
+    rejected = "rejected"
 }
 export enum UserRole {
     admin = "admin",
@@ -122,55 +67,16 @@ export enum UserRole {
     guest = "guest"
 }
 export interface backendInterface {
-    addAddress(addressLabel: string, street: string, city: string, pincode: string, lat: number | null, lng: number | null): Promise<Address>;
-    addBookingItem(bookingId: bigint, categoryId: bigint, estimatedWeight: number): Promise<BookingItem>;
-    addPartner(name: string, phone: string, vehicle: string, rating: number, active: boolean): Promise<Partner>;
-    addScrapCategory(name: string, parentId: bigint | null, unit: string): Promise<ScrapCategory>;
-    addScrapRate(categoryId: bigint, pricePerKg: number): Promise<ScrapRate>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
-    assignPartnerToBooking(bookingId: bigint, partnerId: bigint): Promise<Booking>;
-    autoAssignPartner(bookingId: bigint): Promise<Booking>;
-    clearAllNotifications(): Promise<void>;
-    createBooking(addressId: bigint, scheduledTime: bigint, totalEstimatedAmount: number): Promise<Booking>;
-    createPayment(bookingId: bigint, amount: number, method: PaymentMethod, transactionId: string | null): Promise<Payment>;
-    deleteAddress(id: bigint): Promise<void>;
-    getAddressById(id: bigint): Promise<Address>;
-    getAddresses(): Promise<Array<Address>>;
-    getBookingById(id: bigint): Promise<Booking>;
-    getBookingItems(bookingId: bigint): Promise<Array<BookingItem>>;
+    getAllScrapShops(): Promise<Array<ScrapShop>>;
     getBookingPhase(status: BookingStatus): Promise<string>;
-    getBookingsByAddressId(addressId: bigint): Promise<Array<Booking>>;
-    getBookingsByPartnerId(partnerId: bigint): Promise<Array<Booking>>;
-    getBookingsByStatus(status: BookingStatus): Promise<Array<Booking>>;
-    getBookingsByUser(userId: Principal): Promise<Array<Booking>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
-    getMyBookings(): Promise<Array<Booking>>;
-    getMySupportTickets(): Promise<Array<SupportTicket>>;
-    getNotifications(): Promise<Array<Notification>>;
-    getPartnerById(id: bigint): Promise<Partner>;
-    getPartnerByPhone(phone: string): Promise<Partner | null>;
-    getPartners(): Promise<Array<Partner>>;
-    getPaymentByBookingId(bookingId: bigint): Promise<Payment | null>;
-    getRatingByBookingId(bookingId: bigint): Promise<Rating | null>;
-    getScrapCategories(): Promise<Array<ScrapCategory>>;
-    getScrapCategoryById(id: bigint): Promise<ScrapCategory>;
-    getScrapRateByCategoryId(categoryId: bigint): Promise<ScrapRate | null>;
-    getScrapRates(): Promise<Array<ScrapRate>>;
-    getScrapRatesWithCategories(): Promise<Array<ScrapRateWithCategory>>;
-    getSupportTickets(): Promise<Array<SupportTicket>>;
+    getScrapShopByPhone(phone: string): Promise<ScrapShop | null>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
-    markAllNotificationsRead(): Promise<void>;
-    partnerAcceptBooking(bookingId: bigint, partnerId: bigint): Promise<Booking>;
-    partnerUpdateBookingStatus(bookingId: bigint, partnerId: bigint): Promise<Booking>;
+    registerScrapShop(ownerName: string, shopName: string, phone: string, email: string, city: string, area: string, pincode: string, streetAddress: string, scrapCategoriesHandled: Array<bigint>, rawLanguage: string): Promise<ScrapShop>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
-    submitRating(bookingId: bigint, partnerId: bigint, stars: bigint, comment: string | null): Promise<Rating>;
-    submitSupportTicket(subject: string, message: string): Promise<SupportTicket>;
-    updateAddress(id: bigint, addressLabel: string, street: string, city: string, pincode: string, lat: number | null, lng: number | null): Promise<Address>;
-    updateBookingItemFinalWeight(id: bigint, finalWeight: number): Promise<BookingItem>;
-    updateBookingStatus(bookingId: bigint, newStatus: BookingStatus): Promise<Booking>;
-    updatePartner(id: bigint, name: string, phone: string, vehicle: string, rating: number, active: boolean): Promise<Partner>;
-    updatePaymentStatus(id: bigint, status: PaymentStatus): Promise<Payment>;
-    updateScrapRate(categoryId: bigint, pricePerKg: number): Promise<ScrapRate>;
+    updateScrapShop(id: string, ownerName: string, shopName: string, email: string, city: string, area: string, pincode: string, streetAddress: string, scrapCategoriesHandled: Array<bigint>): Promise<ScrapShop>;
+    updateScrapShopStatus(id: string, status: ScrapShopStatus): Promise<ScrapShop>;
 }

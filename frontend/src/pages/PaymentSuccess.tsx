@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useRouterState } from '@tanstack/react-router';
 import { Home, Star, Download, Package, IndianRupee } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useGetBookingItems, useGetScrapCategories, useGetScrapRates, useGetPaymentByBookingId } from '../hooks/useQueries';
-import { PaymentMethod } from '../backend';
+import { useGetBookingItems, useGetScrapCategories, useGetScrapRates, useGetPaymentByBookingId, PaymentMethod } from '../hooks/useQueries';
 
 export default function PaymentSuccess() {
   const navigate = useNavigate();
@@ -165,37 +164,53 @@ export default function PaymentSuccess() {
           {/* Receipt Footer */}
           <div className="px-4 pb-4 pt-2 border-t border-border bg-muted/30 text-center">
             <p className="text-xs text-muted-foreground">Thank you for using Bhangar Wala</p>
-            <p className="text-xs text-muted-foreground mt-0.5">♻️ Together we make the world cleaner</p>
+            <p className="text-xs text-muted-foreground mt-0.5">♻️ Together we make a greener tomorrow</p>
           </div>
         </div>
 
         {/* Actions */}
         <div className="space-y-3 no-print">
           <Button
-            onClick={() => window.print()}
             variant="outline"
-            className="w-full min-h-[48px] rounded-xl border-primary text-primary"
+            onClick={() => window.print()}
+            className="w-full min-h-[48px] rounded-xl"
           >
             <Download className="w-4 h-4 mr-2" />
             Download Receipt
           </Button>
+
           <Button
             onClick={() => navigate({ to: '/rate-service', state: { bookingId: bookingIdStr } as any })}
-            className="w-full min-h-[48px] rounded-xl"
-            style={{ background: 'oklch(0.769 0.188 70)' }}
+            variant="outline"
+            className="w-full min-h-[48px] rounded-xl border-accent text-accent"
           >
             <Star className="w-4 h-4 mr-2" />
-            Rate Service
+            Rate Your Experience
           </Button>
+
           <Button
             onClick={() => navigate({ to: '/home' })}
-            variant="ghost"
-            className="w-full min-h-[48px] rounded-xl"
+            className="w-full min-h-[52px] text-base font-semibold rounded-xl"
+            style={{ background: 'oklch(0.527 0.154 150)' }}
           >
             <Home className="w-4 h-4 mr-2" />
             Back to Home
           </Button>
         </div>
+
+        {/* Footer */}
+        <p className="text-xs text-muted-foreground text-center pb-4 no-print">
+          Built with ❤️ using{' '}
+          <a
+            href={`https://caffeine.ai/?utm_source=Caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline"
+          >
+            caffeine.ai
+          </a>{' '}
+          · © {new Date().getFullYear()} Bhangar Wala
+        </p>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { User, MapPin, Settings, LogOut, ChevronRight, Camera, Bell, Moon, Edit2 } from 'lucide-react';
+import { User, MapPin, LogOut, ChevronRight, Bell, Moon, Edit2, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -88,6 +88,24 @@ export default function Profile() {
       </div>
 
       <div className="px-4 -mt-4 space-y-4 pb-6">
+        {/* Admin Panel Quick Access */}
+        <div
+          className="rounded-2xl overflow-hidden border-2 border-emerald-500/40 shadow-sm cursor-pointer"
+          style={{ background: 'linear-gradient(135deg, oklch(0.25 0.10 150) 0%, oklch(0.20 0.08 200) 100%)' }}
+          onClick={() => navigate({ to: '/admin' })}
+        >
+          <div className="flex items-center gap-3 px-4 py-4">
+            <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-5 h-5 text-emerald-300" />
+            </div>
+            <div className="flex-1">
+              <p className="font-heading font-bold text-white text-sm">Admin Panel</p>
+              <p className="text-white/60 text-xs">Manage bookings, partners, rates & more</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-white/50 shrink-0" />
+          </div>
+        </div>
+
         {/* Account Section */}
         <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-xs">
           <div className="px-4 py-3 border-b border-border">

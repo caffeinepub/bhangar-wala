@@ -1,60 +1,68 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { ArrowLeft, Phone, MapPin, Clock, Package, ChevronRight, Truck, CheckCircle, UserCheck } from 'lucide-react';
+import { Truck, Phone, MapPin, Package, ChevronRight, CheckCircle2, Clock, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import {
   useGetPartnerByPhone,
   useGetBookingsByPartnerId,
-  useGetAddressById,
-  useGetBookingItems,
-  useGetScrapCategories,
   usePartnerAcceptBooking,
   usePartnerUpdateBookingStatus,
 } from '../hooks/useQueries';
-import { BookingStatus, type Booking } from '../backend';
+import { BookingStatus } from '../backend';
+import type { Booking } from '../hooks/useQueries';
 
-const PARTNER_PHONE_KEY = 'partner_phone';
-
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  [BookingStatus.pending]: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800', icon: <Clock className="w-3 h-3" /> },
-  [BookingStatus.confirmed]: { label: 'Confirmed', color: 'bg-blue-100 text-blue-800', icon: <CheckCircle className="w-3 h-3" /> },
-  [BookingStatus.partner_assigned]: { label: 'Assigned', color: 'bg-purple-100 text-purple-800', icon: <UserCheck className="w-3 h-3" /> },
-  [BookingStatus.on_the_way]: { label: 'On the Way', color: 'bg-orange-100 text-orange-800', icon: <Truck className="w-3 h-3" /> },
-  [BookingStatus.arrived]: { label: 'Arrived', color: 'bg-teal-100 text-teal-800', icon: <MapPin className="w-3 h-3" /> },
-  [BookingStatus.completed]: { label: 'Completed', color: 'bg-green-100 text-green-800', icon: <CheckCircle className="w-3 h-3" /> },
-  [BookingStatus.cancelled]: { label: 'Cancelled', color: 'bg-red-100 text-red-800', icon: <ChevronRight className="w-3 h-3" /> },
+const STATUS_LABELS: Record<BookingStatus, string> = {
+  [BookingStatus.pending]: 'Pending',
+  [BookingStatus.confirmed]: 'Confirmed',
+  [BookingStatus.partner_assigned]: 'Assigned to You',
+  [BookingStatus.on_the_way]: 'On the Way',
+  [BookingStatus.arrived]: 'Arrived',
+  [BookingStatus.completed]: 'Completed',
+  [BookingStatus.cancelled]: 'Cancelled',
 };
 
-function getNextStatusLabel(status: BookingStatus): string {
-  switch (status) {
-    case BookingStatus.partner_assigned: return 'Mark On the Way';
-    case BookingStatus.on_the_way: return 'Mark Arrived';
-    case BookingStatus.arrived: return 'Mark Completed';
-    default: return 'Update Status';
-  }
+const STATUS_COLORS: Record<BookingStatus, string> = {
+  [BookingStatus.pending]: 'bg-yellow-100 text-yellow-700',
+  [BookingStatus.confirmed]: 'bg-blue-100 text-blue-700',
+  [BookingStatus.partner_assigned]: 'bg-indigo-100 text-indigo-700',
+  [BookingStatus.on_the_way]: 'bg-purple-100 text-purple-700',
+  [BookingStatus.arrived]: 'bg-orange-100 text-orange-700',
+  [BookingStatus.completed]: 'bg-green-100 text-green-700',
+  [BookingStatus.cancelled]: 'bg-red-100 text-red-700',
+};
+
+const NEXT_STATUS_LABEL: Partial<Record<BookingStatus, string>> = {
+  [BookingStatus.partner_assigned]: 'Start Journey',
+  [BookingStatus.on_the_way]: 'Mark Arrived',
+  [BookingStatus.arrived]: 'Complete Pickup',
+};
+
+function formatDate(ts: bigint) {
+  return new Date(Number(ts) / 1_000_000).toLocaleDateString('en-IN', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
-function BookingCard({ booking, partnerId }: { booking: Booking; partnerId: bigint }) {
-  const { data: address } = useGetAddressById(booking.addressId);
-  const { data: items = [] } = useGetBookingItems(booking.id);
-  const { data: categories = [] } = useGetScrapCategories();
+function BookingCard({
+  booking,
+  partnerId,
+}: {
+  booking: Booking;
+  partnerId: bigint;
+}) {
   const acceptBooking = usePartnerAcceptBooking();
   const updateStatus = usePartnerUpdateBookingStatus();
 
-  const getCategoryName = (categoryId: bigint) =>
-    categories.find(c => c.id.toString() === categoryId.toString())?.name || 'Unknown';
-
-  const scheduledDate = new Date(Number(booking.scheduledTime) / 1_000_000);
-  const statusKey = booking.status as unknown as string;
-  const statusCfg = STATUS_CONFIG[statusKey] || { label: statusKey, color: 'bg-gray-100 text-gray-800', icon: null };
-
-  const canAccept = booking.status === BookingStatus.confirmed;
-  const canAdvance = [BookingStatus.partner_assigned, BookingStatus.on_the_way, BookingStatus.arrived].includes(booking.status as BookingStatus);
+  const isAcceptable = booking.status === BookingStatus.confirmed && !booking.partnerId;
+  const hasNextStep = booking.status in NEXT_STATUS_LABEL;
+  const isActing = acceptBooking.isPending || updateStatus.isPending;
 
   const handleAccept = async () => {
     try {
@@ -75,103 +83,62 @@ function BookingCard({ booking, partnerId }: { booking: Booking; partnerId: bigi
   };
 
   return (
-    <div className="bg-card rounded-2xl border border-border overflow-hidden">
-      {/* Card Header */}
-      <div className="p-4 border-b border-border bg-primary-light flex items-center justify-between">
+    <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
+      <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="font-heading font-bold text-primary text-sm">Booking #{booking.id.toString()}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {scheduledDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-            {' · '}
-            {scheduledDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
-          </p>
+          <p className="font-semibold text-sm text-foreground">Booking #{booking.id.toString()}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{formatDate(booking.scheduledTime)}</p>
         </div>
-        <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${statusCfg.color}`}>
-          {statusCfg.icon}
-          {statusCfg.label}
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[booking.status]}`}>
+          {STATUS_LABELS[booking.status]}
         </span>
       </div>
 
-      {/* Card Body */}
-      <div className="p-4 space-y-3">
-        {/* Address */}
-        {address ? (
-          <div className="flex items-start gap-2">
-            <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-foreground">{address.street}</p>
-              <p className="text-xs text-muted-foreground">{address.city}, {address.pincode}</p>
-            </div>
-          </div>
-        ) : (
-          <Skeleton className="h-10 rounded-lg" />
-        )}
-
-        {/* Scrap Items */}
-        {items.length > 0 && (
-          <div className="flex items-start gap-2">
-            <Package className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
-            <div className="flex flex-wrap gap-1">
-              {items.map(item => (
-                <span key={item.id.toString()} className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
-                  {getCategoryName(item.categoryId)} · {item.estimatedWeight}kg
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Estimated Amount */}
-        <div className="flex items-center justify-between text-sm">
-          <p className="text-muted-foreground">Est. Amount</p>
-          <p className="font-bold text-primary">₹{booking.totalEstimatedAmount.toFixed(2)}</p>
-        </div>
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <MapPin className="w-3.5 h-3.5 shrink-0" />
+        <span>Address ID: {booking.addressId.toString()}</span>
       </div>
 
-      {/* Actions */}
-      {(canAccept || canAdvance) && (
-        <div className="px-4 pb-4">
-          {canAccept && (
-            <Button
-              onClick={handleAccept}
-              disabled={acceptBooking.isPending}
-              className="w-full min-h-[44px] rounded-xl"
-              style={{ background: 'oklch(0.527 0.154 150)' }}
-            >
-              {acceptBooking.isPending ? (
-                <span className="flex items-center gap-2">
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Accepting...
-                </span>
-              ) : (
-                <span className="flex items-center gap-2">
-                  <UserCheck className="w-4 h-4" />
-                  Accept Booking
-                </span>
-              )}
-            </Button>
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <Package className="w-3.5 h-3.5 shrink-0" />
+        <span>Est. ₹{booking.totalEstimatedAmount.toFixed(0)}</span>
+      </div>
+
+      {isAcceptable && (
+        <Button
+          size="sm"
+          className="w-full"
+          onClick={handleAccept}
+          disabled={isActing}
+        >
+          {isActing ? (
+            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : (
+            <>
+              <CheckCircle2 className="w-4 h-4 mr-1" />
+              Accept Booking
+            </>
           )}
-          {canAdvance && (
-            <Button
-              onClick={handleAdvance}
-              disabled={updateStatus.isPending}
-              className="w-full min-h-[44px] rounded-xl"
-              variant="outline"
-            >
-              {updateStatus.isPending ? (
-                <span className="flex items-center gap-2">
-                  <span className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-                  Updating...
-                </span>
-              ) : (
-                <span className="flex items-center gap-2">
-                  <Truck className="w-4 h-4" />
-                  {getNextStatusLabel(booking.status as BookingStatus)}
-                </span>
-              )}
-            </Button>
+        </Button>
+      )}
+
+      {hasNextStep && (
+        <Button
+          size="sm"
+          variant="outline"
+          className="w-full border-primary text-primary"
+          onClick={handleAdvance}
+          disabled={isActing}
+        >
+          {isActing ? (
+            <span className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+          ) : (
+            <>
+              <ArrowRight className="w-4 h-4 mr-1" />
+              {NEXT_STATUS_LABEL[booking.status]}
+            </>
           )}
-        </div>
+        </Button>
       )}
     </div>
   );
@@ -179,151 +146,135 @@ function BookingCard({ booking, partnerId }: { booking: Booking; partnerId: bigi
 
 export default function PartnerPanel() {
   const navigate = useNavigate();
-  const [partnerPhone, setPartnerPhone] = useState(() => localStorage.getItem(PARTNER_PHONE_KEY) || '');
-  const [phoneInput, setPhoneInput] = useState(() => localStorage.getItem(PARTNER_PHONE_KEY) || '');
+  const [phoneInput, setPhoneInput] = useState('');
+  const [savedPhone, setSavedPhone] = useState(() => {
+    try { return localStorage.getItem('partnerPhone') || ''; } catch { return ''; }
+  });
 
-  const { data: partner, isLoading: partnerLoading, error: partnerError } = useGetPartnerByPhone(partnerPhone);
-  const partnerId = partner ? partner.id : null;
-  const { data: bookings = [], isLoading: bookingsLoading } = useGetBookingsByPartnerId(partnerId);
+  const { data: partner, isLoading: partnerLoading } = useGetPartnerByPhone(savedPhone);
+  const { data: bookings = [], isLoading: bookingsLoading } = useGetBookingsByPartnerId(
+    partner ? partner.id : null
+  );
 
   const handleSetPhone = () => {
     const trimmed = phoneInput.trim();
-    localStorage.setItem(PARTNER_PHONE_KEY, trimmed);
-    setPartnerPhone(trimmed);
-    toast.success('Partner phone updated');
+    if (!trimmed) return;
+    try { localStorage.setItem('partnerPhone', trimmed); } catch {}
+    setSavedPhone(trimmed);
+    setPhoneInput('');
   };
 
-  const activeBookings = bookings.filter(b =>
-    b.status !== BookingStatus.completed && b.status !== BookingStatus.cancelled
+  const activeBookings = bookings.filter(
+    b => b.status !== BookingStatus.completed && b.status !== BookingStatus.cancelled
   );
-  const completedBookings = bookings.filter(b =>
-    b.status === BookingStatus.completed || b.status === BookingStatus.cancelled
-  );
+  const completedBookings = bookings.filter(b => b.status === BookingStatus.completed);
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
       {/* Header */}
       <div
-        className="px-4 pt-4 pb-6"
-        style={{ background: 'linear-gradient(135deg, oklch(0.527 0.154 150) 0%, oklch(0.42 0.14 150) 100%)' }}
+        className="px-4 pt-6 pb-8"
+        style={{ background: 'linear-gradient(135deg, oklch(0.35 0.12 150) 0%, oklch(0.25 0.10 200) 100%)' }}
       >
-        <button
-          onClick={() => navigate({ to: '/home' })}
-          className="p-2 rounded-full bg-white/20 text-white min-w-[44px] min-h-[44px] flex items-center justify-center mb-3"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <h1 className="font-heading text-xl font-bold text-white">Partner Panel</h1>
-        <p className="text-white/80 text-sm">Manage your assigned pickups</p>
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+            <Truck className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <p className="text-white/70 text-xs font-medium uppercase tracking-widest">Bhangar Wala</p>
+            <h1 className="font-heading text-xl font-bold text-white leading-tight">Partner Panel</h1>
+          </div>
+        </div>
+        {partner && (
+          <div className="mt-3 bg-white/10 rounded-xl px-3 py-2">
+            <p className="text-white font-semibold text-sm">{partner.name}</p>
+            <p className="text-white/70 text-xs">{partner.vehicle} · ⭐ {partner.rating.toFixed(1)}</p>
+          </div>
+        )}
       </div>
 
-      <div className="flex-1 px-4 py-5 space-y-5">
-        {/* Partner Phone Setup */}
-        <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
-          <p className="font-heading font-bold text-foreground text-sm">Partner Identity</p>
-          <p className="text-xs text-muted-foreground">
-            Enter your registered partner phone number to view your assigned bookings.
-          </p>
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <Label className="text-xs text-muted-foreground">Phone Number</Label>
+      <div className="flex-1 px-4 py-5 space-y-5 -mt-3">
+        {/* Phone Setup */}
+        {!savedPhone ? (
+          <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
+            <p className="font-semibold text-sm text-foreground">Enter Your Phone Number</p>
+            <p className="text-xs text-muted-foreground">Enter the phone number registered as a partner to view your bookings.</p>
+            <div className="flex gap-2">
               <Input
-                type="tel"
-                placeholder="+91-9876543210"
                 value={phoneInput}
                 onChange={e => setPhoneInput(e.target.value)}
-                className="mt-1 min-h-[44px]"
+                placeholder="+91-9876543210"
+                inputMode="tel"
+                className="flex-1"
               />
-            </div>
-            <div className="flex items-end">
-              <Button
-                onClick={handleSetPhone}
-                className="min-h-[44px] rounded-xl px-4"
-                style={{ background: 'oklch(0.527 0.154 150)' }}
-              >
-                Set
+              <Button onClick={handleSetPhone} disabled={!phoneInput.trim()}>
+                <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
           </div>
-
-          {/* Demo hint */}
-          <div className="bg-primary-light rounded-xl px-3 py-2 border border-primary/20">
-            <p className="text-xs text-primary font-medium">
-              Demo partners: +91-9876543210, +91-9876543211, +91-9876543213, +91-9876543214
-            </p>
+        ) : partnerLoading ? (
+          <Skeleton className="h-20 rounded-2xl" />
+        ) : !partner ? (
+          <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
+            <p className="font-semibold text-sm text-foreground">Partner Not Found</p>
+            <p className="text-xs text-muted-foreground">No partner found for <strong>{savedPhone}</strong>. Please check the number.</p>
+            <Button variant="outline" size="sm" onClick={() => { setSavedPhone(''); try { localStorage.removeItem('partnerPhone'); } catch {} }}>
+              Change Number
+            </Button>
           </div>
-        </div>
-
-        {/* Partner Info */}
-        {partnerPhone && (
-          <>
-            {partnerLoading ? (
-              <Skeleton className="h-16 rounded-2xl" />
-            ) : partner ? (
-              <div className="bg-card rounded-2xl border border-border p-4 flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-primary-light flex items-center justify-center">
-                  <Truck className="w-6 h-6 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-heading font-bold text-foreground">{partner.name}</p>
-                  <p className="text-xs text-muted-foreground">{partner.vehicle} · ⭐ {partner.rating}</p>
-                </div>
-                <Badge variant={partner.active ? 'default' : 'secondary'} className="text-xs">
-                  {partner.active ? 'Active' : 'Inactive'}
-                </Badge>
-              </div>
-            ) : (
-              <div className="bg-destructive/10 rounded-2xl border border-destructive/20 p-4 text-center">
-                <p className="text-sm text-destructive font-medium">No partner found with this phone number.</p>
-                <p className="text-xs text-muted-foreground mt-1">Please check the number and try again.</p>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Bookings */}
-        {partner && partnerId && (
+        ) : (
           <>
             {/* Active Bookings */}
             <div>
-              <p className="font-heading font-bold text-foreground mb-3">
-                Active Bookings
-                {activeBookings.length > 0 && (
-                  <span className="ml-2 text-xs font-normal text-muted-foreground">({activeBookings.length})</span>
-                )}
-              </p>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Active Bookings</p>
+                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-semibold">
+                  {activeBookings.length}
+                </span>
+              </div>
               {bookingsLoading ? (
                 <div className="space-y-3">
-                  {[1, 2].map(i => <Skeleton key={i} className="h-40 rounded-2xl" />)}
+                  {[1, 2].map(i => <Skeleton key={i} className="h-32 rounded-2xl" />)}
                 </div>
               ) : activeBookings.length === 0 ? (
-                <div className="bg-card rounded-2xl border border-border p-8 text-center">
-                  <Truck className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground">No active bookings assigned to you.</p>
+                <div className="bg-card rounded-2xl border border-border p-6 text-center">
+                  <Clock className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No active bookings</p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {activeBookings.map(booking => (
-                    <BookingCard key={booking.id.toString()} booking={booking} partnerId={partnerId} />
+                  {activeBookings.map(b => (
+                    <BookingCard key={b.id.toString()} booking={b} partnerId={partner.id} />
                   ))}
                 </div>
               )}
             </div>
 
-            {/* Completed Bookings */}
+            {/* Completed */}
             {completedBookings.length > 0 && (
               <div>
-                <p className="font-heading font-bold text-foreground mb-3">
-                  Completed
-                  <span className="ml-2 text-xs font-normal text-muted-foreground">({completedBookings.length})</span>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                  Completed ({completedBookings.length})
                 </p>
                 <div className="space-y-3">
-                  {completedBookings.map(booking => (
-                    <BookingCard key={booking.id.toString()} booking={booking} partnerId={partnerId} />
+                  {completedBookings.slice(0, 3).map(b => (
+                    <BookingCard key={b.id.toString()} booking={b} partnerId={partner.id} />
                   ))}
                 </div>
               </div>
             )}
+
+            {/* Change number */}
+            <div className="flex items-center gap-2 pt-2">
+              <Phone className="w-4 h-4 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground flex-1">{savedPhone}</span>
+              <button
+                onClick={() => { setSavedPhone(''); try { localStorage.removeItem('partnerPhone'); } catch {} }}
+                className="text-xs text-primary underline"
+              >
+                Change
+              </button>
+            </div>
           </>
         )}
       </div>

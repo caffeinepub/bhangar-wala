@@ -1,6 +1,127 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
-import { BookingStatus, PaymentMethod, type UserProfile, type Address, type Booking, type BookingItem, type ScrapCategory, type ScrapRate, type ScrapRateWithCategory, type Partner, type Payment, type Rating, type Notification, type SupportTicket } from '../backend';
+import { BookingStatus, ScrapShopStatus, type UserProfile, type ScrapShop } from '../backend';
+import type { Principal } from '@dfinity/principal';
+
+// ── Local Types (not exported from new backend interface) ─────────
+export interface Address {
+  id: bigint;
+  userId: Principal;
+  addressLabel: string;
+  street: string;
+  city: string;
+  pincode: string;
+  lat: number | null;
+  lng: number | null;
+}
+
+export interface ScrapCategory {
+  id: bigint;
+  name: string;
+  parentId: bigint | null;
+  unit: string;
+}
+
+export interface ScrapRate {
+  id: bigint;
+  categoryId: bigint;
+  pricePerKg: number;
+}
+
+export interface ScrapRateWithCategory {
+  id: bigint;
+  categoryId: bigint;
+  pricePerKg: number;
+  categoryName: string;
+}
+
+export interface Booking {
+  id: bigint;
+  userId: Principal;
+  addressId: bigint;
+  status: BookingStatus;
+  scheduledTime: bigint;
+  partnerId: bigint | null;
+  totalEstimatedAmount: number;
+  totalFinalAmount: number | null;
+}
+
+export interface BookingItem {
+  id: bigint;
+  bookingId: bigint;
+  categoryId: bigint;
+  estimatedWeight: number;
+  finalWeight: number | null;
+}
+
+export interface Partner {
+  id: bigint;
+  name: string;
+  phone: string;
+  vehicle: string;
+  rating: number;
+  active: boolean;
+}
+
+export interface Payment {
+  id: bigint;
+  bookingId: bigint;
+  amount: number;
+  method: PaymentMethod;
+  status: PaymentStatus;
+  transactionId: string | null;
+}
+
+export interface Rating {
+  id: bigint;
+  bookingId: bigint;
+  userId: Principal;
+  partnerId: bigint;
+  stars: bigint;
+  comment: string | null;
+}
+
+export interface Notification {
+  id: bigint;
+  userId: Principal;
+  icon: string;
+  title: string;
+  message: string;
+  timestamp: bigint;
+  isRead: boolean;
+}
+
+export interface SupportTicket {
+  id: bigint;
+  userId: Principal;
+  subject: string;
+  message: string;
+  timestamp: bigint;
+  status: TicketStatus;
+}
+
+export interface AdminBooking {
+  booking: Booking;
+  userProfile: UserProfile | null;
+  partner: Partner | null;
+}
+
+export enum PaymentMethod {
+  cash = 'cash',
+  upi = 'upi',
+}
+
+export enum PaymentStatus {
+  pending = 'pending',
+  completed = 'completed',
+  failed = 'failed',
+  refunded = 'refunded',
+}
+
+export enum TicketStatus {
+  open = 'open',
+  resolved = 'resolved',
+}
 
 // ── User Profile ─────────────────────────────────────────────────
 export function useGetCallerUserProfile() {
@@ -46,7 +167,7 @@ export function useGetAddresses() {
     queryKey: ['addresses'],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAddresses();
+      return (actor as any).getAddresses();
     },
     enabled: !!actor && !isFetching,
   });
@@ -59,7 +180,7 @@ export function useGetAddressById(id: bigint | null) {
     queryKey: ['address', id?.toString()],
     queryFn: async () => {
       if (!actor || id === null) return null;
-      return actor.getAddressById(id);
+      return (actor as any).getAddressById(id);
     },
     enabled: !!actor && !isFetching && id !== null,
   });
@@ -72,7 +193,7 @@ export function useAddAddress() {
   return useMutation({
     mutationFn: async (params: { addressLabel: string; street: string; city: string; pincode: string; lat: number | null; lng: number | null }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.addAddress(params.addressLabel, params.street, params.city, params.pincode, params.lat, params.lng);
+      return (actor as any).addAddress(params.addressLabel, params.street, params.city, params.pincode, params.lat, params.lng);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
@@ -87,7 +208,7 @@ export function useUpdateAddress() {
   return useMutation({
     mutationFn: async (params: { id: bigint; addressLabel: string; street: string; city: string; pincode: string; lat: number | null; lng: number | null }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.updateAddress(params.id, params.addressLabel, params.street, params.city, params.pincode, params.lat, params.lng);
+      return (actor as any).updateAddress(params.id, params.addressLabel, params.street, params.city, params.pincode, params.lat, params.lng);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
@@ -102,7 +223,7 @@ export function useDeleteAddress() {
   return useMutation({
     mutationFn: async (id: bigint) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.deleteAddress(id);
+      return (actor as any).deleteAddress(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
@@ -118,7 +239,7 @@ export function useGetScrapCategories() {
     queryKey: ['scrapCategories'],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getScrapCategories();
+      return (actor as any).getScrapCategories();
     },
     enabled: !!actor && !isFetching,
   });
@@ -131,7 +252,7 @@ export function useGetScrapRates() {
     queryKey: ['scrapRates'],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getScrapRates();
+      return (actor as any).getScrapRates();
     },
     enabled: !!actor && !isFetching,
   });
@@ -144,7 +265,7 @@ export function useGetScrapRateByCategoryId(categoryId: bigint | null) {
     queryKey: ['scrapRate', categoryId?.toString()],
     queryFn: async () => {
       if (!actor || categoryId === null) return null;
-      return actor.getScrapRateByCategoryId(categoryId);
+      return (actor as any).getScrapRateByCategoryId(categoryId);
     },
     enabled: !!actor && !isFetching && categoryId !== null,
   });
@@ -158,7 +279,7 @@ export function useGetScrapRatesWithCategories() {
     queryKey: ['scrapRatesWithCategories'],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getScrapRatesWithCategories();
+      return (actor as any).getScrapRatesWithCategories();
     },
     enabled: !!actor && !isFetching,
   });
@@ -171,7 +292,7 @@ export function useUpdateScrapRate() {
   return useMutation({
     mutationFn: async (params: { categoryId: bigint; pricePerKg: number }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.updateScrapRate(params.categoryId, params.pricePerKg);
+      return (actor as any).updateScrapRate(params.categoryId, params.pricePerKg);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['scrapRatesWithCategories'] });
@@ -188,7 +309,7 @@ export function useGetMyBookings() {
     queryKey: ['myBookings'],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getMyBookings();
+      return (actor as any).getMyBookings();
     },
     enabled: !!actor && !isFetching,
   });
@@ -201,7 +322,7 @@ export function useGetBookingById(id: bigint | null) {
     queryKey: ['booking', id?.toString()],
     queryFn: async () => {
       if (!actor || id === null) return null;
-      return actor.getBookingById(id);
+      return (actor as any).getBookingById(id);
     },
     enabled: !!actor && !isFetching && id !== null,
   });
@@ -214,7 +335,7 @@ export function useCreateBooking() {
   return useMutation({
     mutationFn: async (params: { addressId: bigint; scheduledTime: bigint; totalEstimatedAmount: number }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.createBooking(params.addressId, params.scheduledTime, params.totalEstimatedAmount);
+      return (actor as any).createBooking(params.addressId, params.scheduledTime, params.totalEstimatedAmount) as Promise<Booking>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['myBookings'] });
@@ -229,7 +350,7 @@ export function useAddBookingItem() {
   return useMutation({
     mutationFn: async (params: { bookingId: bigint; categoryId: bigint; estimatedWeight: number }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.addBookingItem(params.bookingId, params.categoryId, params.estimatedWeight);
+      return (actor as any).addBookingItem(params.bookingId, params.categoryId, params.estimatedWeight);
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['bookingItems', vars.bookingId.toString()] });
@@ -244,7 +365,7 @@ export function useGetBookingItems(bookingId: bigint | null) {
     queryKey: ['bookingItems', bookingId?.toString()],
     queryFn: async () => {
       if (!actor || bookingId === null) return [];
-      return actor.getBookingItems(bookingId);
+      return (actor as any).getBookingItems(bookingId);
     },
     enabled: !!actor && !isFetching && bookingId !== null,
   });
@@ -257,11 +378,12 @@ export function useUpdateBookingStatus() {
   return useMutation({
     mutationFn: async (params: { id: bigint; status: BookingStatus }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.updateBookingStatus(params.id, params.status);
+      return (actor as any).updateBookingStatus(params.id, params.status);
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['booking', vars.id.toString()] });
       queryClient.invalidateQueries({ queryKey: ['myBookings'] });
+      queryClient.invalidateQueries({ queryKey: ['allBookings'] });
     },
   });
 }
@@ -273,11 +395,12 @@ export function useAssignPartnerToBooking() {
   return useMutation({
     mutationFn: async (params: { bookingId: bigint; partnerId: bigint }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.assignPartnerToBooking(params.bookingId, params.partnerId);
+      return (actor as any).assignPartnerToBooking(params.bookingId, params.partnerId);
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['booking', vars.bookingId.toString()] });
       queryClient.invalidateQueries({ queryKey: ['myBookings'] });
+      queryClient.invalidateQueries({ queryKey: ['allBookings'] });
     },
   });
 }
@@ -289,7 +412,7 @@ export function useUpdateBookingItemFinalWeight() {
   return useMutation({
     mutationFn: async (params: { id: bigint; finalWeight: number }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.updateBookingItemFinalWeight(params.id, params.finalWeight);
+      return (actor as any).updateBookingItemFinalWeight(params.id, params.finalWeight);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bookingItems'] });
@@ -305,7 +428,7 @@ export function useGetPartners() {
     queryKey: ['partners'],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getPartners();
+      return (actor as any).getPartners();
     },
     enabled: !!actor && !isFetching,
   });
@@ -318,7 +441,7 @@ export function useGetPartnerById(id: bigint | null) {
     queryKey: ['partner', id?.toString()],
     queryFn: async () => {
       if (!actor || id === null) return null;
-      return actor.getPartnerById(id);
+      return (actor as any).getPartnerById(id);
     },
     enabled: !!actor && !isFetching && id !== null,
   });
@@ -331,7 +454,7 @@ export function useGetPartnerByPhone(phone: string) {
     queryKey: ['partnerByPhone', phone],
     queryFn: async () => {
       if (!actor || !phone) return null;
-      return actor.getPartnerByPhone(phone);
+      return (actor as any).getPartnerByPhone(phone);
     },
     enabled: !!actor && !isFetching && !!phone,
   });
@@ -344,7 +467,7 @@ export function useGetBookingsByPartnerId(partnerId: bigint | null) {
     queryKey: ['bookingsByPartner', partnerId?.toString()],
     queryFn: async () => {
       if (!actor || partnerId === null) return [];
-      return actor.getBookingsByPartnerId(partnerId);
+      return (actor as any).getBookingsByPartnerId(partnerId);
     },
     enabled: !!actor && !isFetching && partnerId !== null,
     refetchInterval: 15000,
@@ -358,7 +481,7 @@ export function usePartnerAcceptBooking() {
   return useMutation({
     mutationFn: async (params: { bookingId: bigint; partnerId: bigint }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.partnerAcceptBooking(params.bookingId, params.partnerId);
+      return (actor as any).partnerAcceptBooking(params.bookingId, params.partnerId);
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['bookingsByPartner'] });
@@ -374,7 +497,7 @@ export function usePartnerUpdateBookingStatus() {
   return useMutation({
     mutationFn: async (params: { bookingId: bigint; partnerId: bigint }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.partnerUpdateBookingStatus(params.bookingId, params.partnerId);
+      return (actor as any).partnerUpdateBookingStatus(params.bookingId, params.partnerId);
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['bookingsByPartner'] });
@@ -391,7 +514,7 @@ export function useCreatePayment() {
   return useMutation({
     mutationFn: async (params: { bookingId: bigint; amount: number; method: PaymentMethod; transactionId: string | null }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.createPayment(params.bookingId, params.amount, params.method, params.transactionId);
+      return (actor as any).createPayment(params.bookingId, params.amount, params.method, params.transactionId);
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['payment', vars.bookingId.toString()] });
@@ -407,7 +530,7 @@ export function useGetPaymentByBookingId(bookingId: bigint | null) {
     queryKey: ['payment', bookingId?.toString()],
     queryFn: async () => {
       if (!actor || bookingId === null) return null;
-      return actor.getPaymentByBookingId(bookingId);
+      return (actor as any).getPaymentByBookingId(bookingId);
     },
     enabled: !!actor && !isFetching && bookingId !== null,
   });
@@ -421,7 +544,7 @@ export function useSubmitRating() {
   return useMutation({
     mutationFn: async (params: { bookingId: bigint; partnerId: bigint; stars: bigint; comment: string | null }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.submitRating(params.bookingId, params.partnerId, params.stars, params.comment);
+      return (actor as any).submitRating(params.bookingId, params.partnerId, params.stars, params.comment);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ratings'] });
@@ -437,7 +560,7 @@ export function useGetNotifications() {
     queryKey: ['notifications'],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getNotifications();
+      return (actor as any).getNotifications();
     },
     enabled: !!actor && !isFetching,
     refetchInterval: 30000,
@@ -451,7 +574,7 @@ export function useMarkAllNotificationsRead() {
   return useMutation({
     mutationFn: async () => {
       if (!actor) throw new Error('Actor not available');
-      return actor.markAllNotificationsRead();
+      return (actor as any).markAllNotificationsRead();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
@@ -466,7 +589,7 @@ export function useClearAllNotifications() {
   return useMutation({
     mutationFn: async () => {
       if (!actor) throw new Error('Actor not available');
-      return actor.clearAllNotifications();
+      return (actor as any).clearAllNotifications();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
@@ -482,10 +605,194 @@ export function useSubmitSupportTicket() {
   return useMutation({
     mutationFn: async (params: { subject: string; message: string }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.submitSupportTicket(params.subject, params.message);
+      return (actor as any).submitSupportTicket(params.subject, params.message);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['supportTickets'] });
+    },
+  });
+}
+
+// ── Admin Queries ────────────────────────────────────────────────
+export function useGetAllBookings() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<AdminBooking[]>({
+    queryKey: ['allBookings'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return (actor as any).getAllBookings();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useGetAllPartners() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<Partner[]>({
+    queryKey: ['allPartners'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return (actor as any).getAllPartners();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useGetAllSupportTickets() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<SupportTicket[]>({
+    queryKey: ['allSupportTickets'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return (actor as any).getAllSupportTickets();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useAdminAddPartner() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { name: string; phone: string; vehicle: string; rating: number; active: boolean }) => {
+      if (!actor) throw new Error('Actor not available');
+      return (actor as any).adminAddPartner(params.name, params.phone, params.vehicle, params.rating, params.active);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['allPartners'] });
+      queryClient.invalidateQueries({ queryKey: ['partners'] });
+    },
+  });
+}
+
+export function useAdminUpdatePartner() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { id: bigint; name: string; phone: string; vehicle: string; rating: number; active: boolean }) => {
+      if (!actor) throw new Error('Actor not available');
+      return (actor as any).adminUpdatePartner(params.id, params.name, params.phone, params.vehicle, params.rating, params.active);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['allPartners'] });
+      queryClient.invalidateQueries({ queryKey: ['partners'] });
+    },
+  });
+}
+
+export function useTogglePartnerActive() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { id: bigint; active: boolean }) => {
+      if (!actor) throw new Error('Actor not available');
+      return (actor as any).togglePartnerActive(params.id, params.active);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['allPartners'] });
+      queryClient.invalidateQueries({ queryKey: ['partners'] });
+    },
+  });
+}
+
+export function useUpdateSupportTicketStatus() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { id: bigint; status: TicketStatus }) => {
+      if (!actor) throw new Error('Actor not available');
+      return (actor as any).updateSupportTicketStatus(params.id, params.status);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['allSupportTickets'] });
+    },
+  });
+}
+
+// ── Scrap Shop ───────────────────────────────────────────────────
+export function useRegisterScrapShop() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: {
+      ownerName: string;
+      shopName: string;
+      phone: string;
+      email: string;
+      city: string;
+      area: string;
+      pincode: string;
+      streetAddress: string;
+      scrapCategoriesHandled: bigint[];
+      rawLanguage: string;
+    }) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.registerScrapShop(
+        params.ownerName,
+        params.shopName,
+        params.phone,
+        params.email,
+        params.city,
+        params.area,
+        params.pincode,
+        params.streetAddress,
+        params.scrapCategoriesHandled,
+        params.rawLanguage,
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['scrapShopByPhone'] });
+      queryClient.invalidateQueries({ queryKey: ['allScrapShops'] });
+    },
+  });
+}
+
+export function useGetScrapShopByPhone(phone: string) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<ScrapShop | null>({
+    queryKey: ['scrapShopByPhone', phone],
+    queryFn: async () => {
+      if (!actor || !phone) return null;
+      return actor.getScrapShopByPhone(phone);
+    },
+    enabled: !!actor && !isFetching && !!phone,
+  });
+}
+
+export function useGetAllScrapShops() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<ScrapShop[]>({
+    queryKey: ['allScrapShops'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getAllScrapShops();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useUpdateScrapShopStatus() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { id: string; status: ScrapShopStatus }) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.updateScrapShopStatus(params.id, params.status);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['allScrapShops'] });
+      queryClient.invalidateQueries({ queryKey: ['scrapShopByPhone'] });
     },
   });
 }

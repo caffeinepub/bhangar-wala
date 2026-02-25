@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
-import { useNavigate, useRouterState } from '@tanstack/react-router';
-import { Camera, User, ArrowRight } from 'lucide-react';
+import { useNavigate } from '@tanstack/react-router';
+import { Camera, User, ArrowRight, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,11 +10,10 @@ import { ExternalBlob } from '../utils/blobStorage';
 
 export default function ProfileSetup() {
   const navigate = useNavigate();
-  const routerState = useRouterState();
-  const phone = (routerState.location.state as any)?.phone || '';
   const { identity } = useInternetIdentity();
 
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [profileImageUrl, setProfileImageUrl] = useState('');
   const [imagePreview, setImagePreview] = useState('');
   const [street, setStreet] = useState('');
@@ -55,7 +54,7 @@ export default function ProfileSetup() {
     await saveProfile.mutateAsync({
       id: principal,
       name: name.trim(),
-      phone: phone,
+      phone: phone.trim(),
       profileImage: profileImageUrl,
     });
 
@@ -120,6 +119,23 @@ export default function ProfileSetup() {
             value={name}
             onChange={e => setName(e.target.value)}
             className="min-h-[48px]"
+          />
+        </div>
+
+        {/* Phone (optional) */}
+        <div className="space-y-2">
+          <Label className="flex items-center gap-1">
+            <Phone className="w-3.5 h-3.5" />
+            Phone Number
+            <span className="text-muted-foreground font-normal text-xs ml-1">(Optional)</span>
+          </Label>
+          <Input
+            type="tel"
+            placeholder="e.g. +91 98765 43210"
+            value={phone}
+            onChange={e => setPhone(e.target.value)}
+            className="min-h-[48px]"
+            inputMode="tel"
           />
         </div>
 
