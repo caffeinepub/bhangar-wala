@@ -1,132 +1,117 @@
 {
   "kind": "build_request",
-  "title": "Switch authentication to Internet Identity (Google, Apple, Microsoft, passkey)",
+  "title": "Revert to phone OTP login flow",
   "projectName": "Bhangar Wala",
-  "priority": "normal",
+  "priority": "high",
   "requirements": [
     {
-      "id": "REQ-47",
-      "text": "Replace the simulated phone OTP login flow with Internet Identity authentication. Update the Login screen (`/login`) to display a single 'Sign In' button (replacing the phone number input, country code selector, OTP fields, and terms checkbox). Tapping 'Sign In' triggers the Internet Identity login popup using the `useInternetIdentity` hook already available at `frontend/src/hooks/useInternetIdentity.ts`. After successful login, check whether a user profile exists in the backend: if no profile exists, navigate to `/profile-setup`; if a profile exists, navigate to `/home`. Remove the `/otp-verification` route and page.",
+      "id": "REQ-57",
+      "text": "Restore the Login screen (`/login`) to the original phone OTP flow: display a phone number input field, a country code selector defaulting to +91, a 'Send OTP' button, and a terms & conditions checkbox. On submitting a valid phone number, navigate to `/otp-verification` and store the phone number in component state. Remove the Internet Identity 'Sign In' button and any II-related error/retry UI from this screen.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-last"
+          "msg-4"
         ],
         "quotes": [
-          "Google, Apple, Microsoft, or passkey"
+          "Keep phone OTP — no change needed, works as-was."
         ]
       },
       "acceptanceCriteria": [
-        "The Login screen shows a single 'Sign In with Internet Identity' button and no phone/OTP fields",
-        "Tapping the button opens the Internet Identity popup which offers Google, Apple, Microsoft, and passkey sign-in options",
-        "After successful Internet Identity login, users without a profile are redirected to `/profile-setup`",
-        "After successful Internet Identity login, returning users with an existing profile are redirected to `/home`",
-        "The `/otp-verification` route no longer exists and navigating to it redirects to `/login`",
-        "The Splash screen redirect logic uses the Internet Identity session (via `useInternetIdentity`) instead of localStorage to determine authentication state"
+        "The /login route renders a phone number input with country code selector defaulting to +91",
+        "A 'Send OTP' button is present and navigates to /otp-verification on valid phone number submission",
+        "A terms & conditions checkbox is present",
+        "The Internet Identity 'Sign In' button is not present on the login screen",
+        "No II-related error state or retry button is shown on the login screen"
       ]
     },
     {
-      "id": "REQ-48",
-      "text": "Update the Splash screen (`/splash`) to determine authentication state using the `useInternetIdentity` hook's identity/isAuthenticated value instead of checking localStorage for a phone OTP session. If authenticated, redirect to `/home`; otherwise redirect to `/login`.",
+      "id": "REQ-58",
+      "text": "Restore the `/otp-verification` route and the OTP Verification page. The page must render 6 individual digit input boxes, a 60-second countdown timer, a 'Resend OTP' button (enabled only after the timer expires), and a 'Verify' button. On successful verification (accept any 6-digit code), navigate first-time users to `/profile-setup` and returning users to `/home`. Store the auth session in localStorage. Include the helper hint 'Enter any 6-digit code to verify' below the digit input boxes.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-last"
+          "msg-4"
         ],
         "quotes": [
-          "Google, Apple, Microsoft, or passkey"
+          "Keep phone OTP — no change needed, works as-was."
         ]
       },
       "acceptanceCriteria": [
-        "Splash screen reads auth state from `useInternetIdentity` hook",
-        "Authenticated users are auto-redirected to `/home` after the splash delay",
-        "Unauthenticated users are auto-redirected to `/login` after the splash delay"
+        "The /otp-verification route is registered and accessible",
+        "6 individual digit input boxes are rendered",
+        "A 60-second countdown timer is shown",
+        "The 'Resend OTP' button is disabled until the timer expires",
+        "Submitting any valid 6-digit code navigates to /profile-setup for new users or /home for returning users",
+        "Auth session is saved to localStorage on success",
+        "The helper hint 'Enter any 6-digit code to verify' is visible below the input boxes"
       ]
     },
     {
-      "id": "REQ-49",
-      "text": "Update the Logout button on the Profile screen (`/profile`) to call the `logout` method from the `useInternetIdentity` hook instead of simply clearing localStorage. After logout, redirect to `/login`.",
+      "id": "REQ-59",
+      "text": "Restore the Profile Setup screen (`/profile-setup`) to use the phone number stored in localStorage (set during OTP login) as the user identifier when calling the backend `createUserProfile` method. Make the phone field on the profile setup form required (not optional), consistent with the phone-OTP-based auth flow.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-last"
+          "msg-4"
         ],
         "quotes": [
-          "Google, Apple, Microsoft, or passkey"
+          "Keep phone OTP — no change needed, works as-was."
         ]
       },
       "acceptanceCriteria": [
-        "Tapping 'Logout' calls the Internet Identity `logout` method",
-        "User is redirected to `/login` after logout",
-        "Internet Identity session is fully cleared on logout"
+        "Profile Setup reads the phone number from localStorage set during OTP verification",
+        "The phone field on the profile setup form is required",
+        "createUserProfile is called with the phone-based user ID, not an Internet Identity principal"
       ]
     },
     {
-      "id": "REQ-50",
-      "text": "Update the Layout component (`frontend/src/components/Layout.tsx`) to use the `useInternetIdentity` hook to detect authentication instead of reading from localStorage. Unauthenticated users accessing protected routes should be redirected to `/login`.",
+      "id": "REQ-60",
+      "text": "Restore the Splash screen (`/splash`) redirect logic to use localStorage session detection (not Internet Identity initialization state) to determine whether to redirect to `/home` (authenticated) or `/login` (unauthenticated).",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-last"
+          "msg-4"
         ],
         "quotes": [
-          "Google, Apple, Microsoft, or passkey"
+          "Keep phone OTP — no change needed, works as-was."
         ]
       },
       "acceptanceCriteria": [
-        "Layout uses `useInternetIdentity` isAuthenticated/identity to guard protected routes",
-        "Unauthenticated access to any layout-wrapped route redirects to `/login`",
-        "No longer reads a phone OTP session key from localStorage for auth checks"
+        "The splash screen checks localStorage for an auth session",
+        "Authenticated users (session in localStorage) are redirected to /home",
+        "Unauthenticated users are redirected to /login",
+        "The redirect does not depend on Internet Identity initialization"
       ]
     },
     {
-      "id": "REQ-51",
-      "text": "Update the Profile Setup screen (`/profile-setup`) to derive the user identifier from the Internet Identity principal (via `useInternetIdentity`) rather than from a phone number stored in localStorage. Use the principal text as the user ID when calling the backend `createUserProfile` method. Since phone number is no longer collected during login, make the phone field on the profile setup form optional.",
+      "id": "REQ-61",
+      "text": "Restore the Profile screen (`/profile`) logout action to clear the localStorage auth session and redirect to `/login`, without calling any Internet Identity logout method.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-last"
+          "msg-4"
         ],
         "quotes": [
-          "Google, Apple, Microsoft, or passkey"
+          "Keep phone OTP — no change needed, works as-was."
         ]
       },
       "acceptanceCriteria": [
-        "Profile Setup uses the Internet Identity principal as the user identifier",
-        "Phone number field is optional on the profile setup form",
-        "Saving the profile calls the backend with the principal-derived user ID",
-        "On save, user is navigated to `/home`"
-      ]
-    },
-    {
-      "id": "REQ-52",
-      "text": "Update all frontend query hooks in `frontend/src/hooks/useQueries.ts` that currently look up the current user by phone number from localStorage to instead use the Internet Identity principal obtained from the `useActor` / `useInternetIdentity` hooks as the user identifier for backend calls.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-last"
-        ],
-        "quotes": [
-          "Google, Apple, Microsoft, or passkey"
-        ]
-      },
-      "acceptanceCriteria": [
-        "All backend calls that previously used a localStorage phone key now use the Internet Identity principal",
-        "User-scoped queries (bookings, addresses, notifications, profile) return data for the authenticated principal",
-        "No query hook reads `phone` from localStorage as the primary user identifier"
+        "Tapping 'Logout' clears localStorage and redirects to /login",
+        "No Internet Identity logout call is made on the standard user logout action"
       ]
     }
   ],
   "constraints": [
-    "Do not modify `frontend/src/hooks/useInternetIdentity.ts` or `frontend/src/hooks/useActor.ts` — these are immutable",
-    "Do not modify `frontend/src/main.tsx` — it already wraps the app with InternetIdentityProvider",
-    "The backend Motoko actor should not require schema changes solely for this auth switch; use the existing principal-based identity where possible"
+    "Do not modify any Internet Identity hook files under frontend/src/hooks/useInternetIdentity.ts",
+    "Do not modify frontend/src/main.tsx",
+    "The backend data model and API methods must not change",
+    "Admin, partner panel, and shop registration flows must remain unaffected"
   ],
   "nonGoals": [
-    "Adding any third-party OAuth providers directly (only Internet Identity is supported by the platform)",
-    "Keeping the phone OTP flow as a fallback or secondary option",
-    "Changing the backend data model or adding new backend methods for this auth switch",
-    "Modifying admin or partner panel authentication"
+    "Any changes to Internet Identity integration",
+    "Any backend schema or data migration",
+    "Changes to the service worker (frontend/public/sw.js) beyond what is needed for the OTP revert",
+    "Changes to admin, partner panel, or scrap shop registration screens"
   ],
   "imageRequirements": {
     "required": [],

@@ -8,12 +8,10 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useGetCallerUserProfile, useSaveCallerUserProfile } from '../hooks/useQueries';
-import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import { useQueryClient } from '@tanstack/react-query';
 
 export default function Profile() {
   const navigate = useNavigate();
-  const { clear, identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   const { data: profile, isLoading } = useGetCallerUserProfile();
   const saveProfile = useSaveCallerUserProfile();
@@ -29,7 +27,7 @@ export default function Profile() {
   };
 
   const handleSaveEdit = async () => {
-    if (!profile || !identity) return;
+    if (!profile) return;
     await saveProfile.mutateAsync({
       ...profile,
       name: editName.trim(),
@@ -37,8 +35,10 @@ export default function Profile() {
     setEditOpen(false);
   };
 
-  const handleLogout = async () => {
-    await clear();
+  const handleLogout = () => {
+    // Clear localStorage auth session and all cached query data
+    localStorage.removeItem('auth_session');
+    sessionStorage.removeItem('otp_phone');
     queryClient.clear();
     navigate({ to: '/login' });
   };

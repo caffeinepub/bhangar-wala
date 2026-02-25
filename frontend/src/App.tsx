@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react';
 import Layout from './components/Layout';
 import Splash from './pages/Splash';
 import Login from './pages/Login';
+import OtpVerification from './pages/OtpVerification';
 import ProfileSetup from './pages/ProfileSetup';
 import Home from './pages/Home';
 import BookPickup from './pages/BookPickup';
@@ -54,13 +55,10 @@ const loginRoute = createRoute({
   component: Login,
 });
 
-// Redirect /otp-verification to /login (legacy route removed)
-const otpRedirectRoute = createRoute({
+const otpVerificationRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/otp-verification',
-  beforeLoad: () => {
-    throw redirect({ to: '/login' });
-  },
+  component: OtpVerification,
 });
 
 const profileSetupRoute = createRoute({
@@ -270,7 +268,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   splashRoute,
   loginRoute,
-  otpRedirectRoute,
+  otpVerificationRoute,
   profileSetupRoute,
   partnerPanelRoute,
   adminRatesRoute,

@@ -1,16 +1,24 @@
 import { useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { useInternetIdentity } from '../hooks/useInternetIdentity';
+
+function getAuthSession() {
+  try {
+    const raw = localStorage.getItem('auth_session');
+    if (!raw) return null;
+    const session = JSON.parse(raw);
+    return session?.verified ? session : null;
+  } catch {
+    return null;
+  }
+}
 
 export default function Splash() {
   const navigate = useNavigate();
-  const { identity, isInitializing } = useInternetIdentity();
 
   useEffect(() => {
-    if (isInitializing) return;
-
     const timer = setTimeout(() => {
-      if (identity) {
+      const session = getAuthSession();
+      if (session) {
         navigate({ to: '/home' });
       } else {
         navigate({ to: '/login' });
@@ -18,7 +26,7 @@ export default function Splash() {
     }, 2200);
 
     return () => clearTimeout(timer);
-  }, [identity, isInitializing, navigate]);
+  }, [navigate]);
 
   return (
     <div

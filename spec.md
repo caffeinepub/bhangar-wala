@@ -1,16 +1,13 @@
 # Specification
 
 ## Summary
-**Goal:** Replace the phone OTP authentication flow with Internet Identity (supporting Google, Apple, Microsoft, and passkey sign-in) across the frontend.
+**Goal:** Revert the authentication flow back to phone OTP login, removing Internet Identity (II) integration from all user-facing screens.
 
 **Planned changes:**
-- Replace the Login screen (`/login`) phone number input, country code selector, OTP fields, and terms checkbox with a single "Sign In with Internet Identity" button that triggers the Internet Identity popup via `useInternetIdentity`
-- After successful login, redirect users without a profile to `/profile-setup` and returning users to `/home`
-- Remove the `/otp-verification` route and page; redirect any navigation to it back to `/login`
-- Update the Splash screen to determine auth state from `useInternetIdentity` instead of localStorage
-- Update the Logout button on the Profile screen to call the Internet Identity `logout` method and redirect to `/login`
-- Update the Layout component to guard protected routes using `useInternetIdentity` instead of localStorage
-- Update the Profile Setup screen to derive the user identifier from the Internet Identity principal; make the phone field optional
-- Update all query hooks in `useQueries.ts` to use the Internet Identity principal instead of a localStorage phone key for backend calls
+- Restore the `/login` screen with a phone number input, country code selector (defaulting to +91), "Send OTP" button, and terms & conditions checkbox; remove the II "Sign In" button and any II-related error/retry UI
+- Restore the `/otp-verification` page with 6 individual digit input boxes, a 60-second countdown timer, a "Resend OTP" button (enabled only after timer expires), a "Verify" button, and a helper hint; navigate new users to `/profile-setup` and returning users to `/home` on success; save auth session to localStorage
+- Restore `/profile-setup` to read the phone number from localStorage as the user identifier and make the phone field required when calling `createUserProfile`
+- Restore the `/splash` screen redirect logic to use localStorage session detection (redirect to `/home` if authenticated, `/login` if not) instead of II initialization state
+- Restore the `/profile` logout action to clear localStorage and redirect to `/login` without calling any II logout method
 
-**User-visible outcome:** Users log in via Internet Identity (Google, Apple, Microsoft, or passkey) instead of phone OTP. The app correctly handles session state, profile setup for new users, and logout entirely through Internet Identity.
+**User-visible outcome:** Users can log in using their phone number and OTP as before, with session management handled via localStorage throughout the app.

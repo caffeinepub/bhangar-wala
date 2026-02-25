@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 19,
-  "summary": "Bhangar wala is a PWA that connects households with scrap collection partners for doorstep pickup and instant payment. Built with React, Tailwind CSS, Vite, and Supabase. Features phone OTP auth, address management, scrap category selection, booking system, real-time tracking, dynamic pricing, UPI/cash payments, booking history, ratings, push notifications, and customer support. Mobile-first design with green/slate/amber palette. Authentication is being switched to Internet Identity (supporting Google, Apple, Microsoft, and passkey sign-in) to replace the simulated phone OTP flow.",
+  "projectStateVersion": 23,
+  "summary": "Bhangar wala is a PWA that connects households with scrap collection partners for doorstep pickup and instant payment. Built with React, Tailwind CSS, Vite, and Supabase. Features phone OTP auth, address management, scrap category selection, booking system, real-time tracking, dynamic pricing, UPI/cash payments, booking history, ratings, push notifications, and customer support. Mobile-first design with green/slate/amber palette. Authentication uses simulated phone OTP flow (Internet Identity migration was attempted but reverted due to mobile connection issues).",
   "architectural_notes": [
     "Tech stack: React + Tailwind CSS + Vite (frontend), Supabase (auth, DB, storage, realtime)",
     "External APIs: SMS Gateway (OTP), Google Maps (address/location), UPI/Razorpay (payments), Firebase Cloud Messaging (push notifications)",
@@ -11,8 +11,7 @@
     "DB schema: Users, Addresses, ScrapCategories, ScrapRates, Bookings, BookingItems, Partners, Payments",
     "Supabase realtime subscriptions used for order/tracking status updates",
     "Mobile-first design, typography: Inter/Poppins headings, system fonts for body",
-    "Multilingual support required: Hindi, Marathi, Gujarati, Marwadi, English (i18n/localization layer needed)",
-    "Authentication: Internet Identity (supports Google, Apple, Microsoft, passkey) replaces simulated phone OTP flow"
+    "Multilingual support required: Hindi, Marathi, Gujarati, Marwadi, English (i18n/localization layer needed)"
   ],
   "known_issues": [],
   "isFixRequest": false,
@@ -344,6 +343,62 @@
         "REQ-51"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-in-frontend-public-sw-js-update-the-service-worker-s-network-first-strategy-to-correctly-bypass-caching-for-internet-identity-authentication-requests-requests-to-identity-ic0-app-identity-internetcomputer-org-and-icp-canister-api-calls-ensure-the-service-worker-does-not-intercept-or-cache-these-requests-which-causes-unable-to-connect-failures-on-mobile-browsers-where-service-worker-behavior-differs-from-desktop",
+      "title": "In `frontend/public/sw.js`, update the service worker's network-first strategy to correctly bypass caching for Internet Identity authentication requests (requests to `identity.ic0.app`, `identity.internetcomputer.org`) and ICP canister API calls. Ensure the service worker does not intercept or cache these requests, which causes 'unable to connect' failures on mobile browsers where service worker behavior differs from desktop.",
+      "reqIds": [
+        "REQ-53"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-user-facing-error-state-on-the-login-screen-login-that-displays-a-clear-friendly-message-when-the-internet-identity-connection-fails-e-g-network-error-or-popup-blocked-on-mobile-show-a-retry-button-that-re-attempts-the-login-call-this-prevents-users-from-seeing-a-blank-or-broken-screen-when-connectivity-issues-occur",
+      "title": "Add a user-facing error state on the Login screen (`/login`) that displays a clear, friendly message when the Internet Identity connection fails (e.g., network error or popup blocked on mobile). Show a retry button that re-attempts the `login()` call. This prevents users from seeing a blank or broken screen when connectivity issues occur.",
+      "reqIds": [
+        "REQ-56"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-the-login-screen-login-to-the-original-phone-otp-flow-display-a-phone-number-input-field-a-country-code-selector-defaulting-to-91-a-send-otp-button-and-a-terms-conditions-checkbox-on-submitting-a-valid-phone-number-navigate-to-otp-verification-and-store-the-phone-number-in-component-state-remove-the-internet-identity-sign-in-button-and-any-ii-related-error-retry-ui-from-this-screen",
+      "title": "Restore the Login screen (`/login`) to the original phone OTP flow: display a phone number input field, a country code selector defaulting to +91, a 'Send OTP' button, and a terms & conditions checkbox. On submitting a valid phone number, navigate to `/otp-verification` and store the phone number in component state. Remove the Internet Identity 'Sign In' button and any II-related error/retry UI from this screen.",
+      "reqIds": [
+        "REQ-57"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-the-otp-verification-route-and-the-otp-verification-page-the-page-must-render-6-individual-digit-input-boxes-a-60-second-countdown-timer-a-resend-otp-button-enabled-only-after-the-timer-expires-and-a-verify-button-on-successful-verification-accept-any-6-digit-code-navigate-first-time-users-to-profile-setup-and-returning-users-to-home-store-the-auth-session-in-localstorage-include-the-helper-hint-enter-any-6-digit-code-to-verify-below-the-digit-input-boxes",
+      "title": "Restore the `/otp-verification` route and the OTP Verification page. The page must render 6 individual digit input boxes, a 60-second countdown timer, a 'Resend OTP' button (enabled only after the timer expires), and a 'Verify' button. On successful verification (accept any 6-digit code), navigate first-time users to `/profile-setup` and returning users to `/home`. Store the auth session in localStorage. Include the helper hint 'Enter any 6-digit code to verify' below the digit input boxes.",
+      "reqIds": [
+        "REQ-58"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-the-profile-setup-screen-profile-setup-to-use-the-phone-number-stored-in-localstorage-set-during-otp-login-as-the-user-identifier-when-calling-the-backend-createuserprofile-method-make-the-phone-field-on-the-profile-setup-form-required-not-optional-consistent-with-the-phone-otp-based-auth-flow",
+      "title": "Restore the Profile Setup screen (`/profile-setup`) to use the phone number stored in localStorage (set during OTP login) as the user identifier when calling the backend `createUserProfile` method. Make the phone field on the profile setup form required (not optional), consistent with the phone-OTP-based auth flow.",
+      "reqIds": [
+        "REQ-59"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-the-splash-screen-splash-redirect-logic-to-use-localstorage-session-detection-not-internet-identity-initialization-state-to-determine-whether-to-redirect-to-home-authenticated-or-login-unauthenticated",
+      "title": "Restore the Splash screen (`/splash`) redirect logic to use localStorage session detection (not Internet Identity initialization state) to determine whether to redirect to `/home` (authenticated) or `/login` (unauthenticated).",
+      "reqIds": [
+        "REQ-60"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-the-profile-screen-profile-logout-action-to-clear-the-localstorage-auth-session-and-redirect-to-login-without-calling-any-internet-identity-logout-method",
+      "title": "Restore the Profile screen (`/profile`) logout action to clear the localStorage auth session and redirect to `/login`, without calling any Internet Identity logout method.",
+      "reqIds": [
+        "REQ-61"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -520,44 +575,6 @@
       "summary": "Extend the backend (backend/main.mo) with a new ScrapShop entity and related methods. Add the ScrapShop data type with fields: id (Text), ownerName (Text), shopName (Text), phone (Text), email (Text), city (Text), area (Text), pincode (Text), streetAddress (Text), scrapCategoriesHandled (array of category IDs), preferredLanguage (Text — one of: 'en', 'hi', 'mr', 'gu', 'mw'), registrationStatus (variant: #pending | #approved | #rejected), registeredAt (Int timestamp). Implement: registerScrapShop(ownerName, shopName, phone, email, city, area, pincode, streetAddress, scrapCategoriesHandled, preferredLanguage) — creates a new shop record with status #pending; getScrapShopByPhone(phone) — returns a shop record by phone; getAllScrapShops() — returns all shop records (admin use); updateScrapShopStatus(id, status) — updates registration status to approved or rejected (admin use); updateScrapShop(id, ownerName, shopName, email, city, area, pincode, streetAddress, scrapCategoriesHandled) — updates shop details.",
       "reqIds": [
         "REQ-42"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-44",
-      "summary": "Switch authentication from simulated phone OTP to Internet Identity, supporting Google, Apple, Microsoft, and passkey sign-in options",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-46",
-      "summary": "Update the Splash screen (`/splash`) to determine authentication state using the `useInternetIdentity` hook's identity/isAuthenticated value instead of checking localStorage for a phone OTP session. If authenticated, redirect to `/home`; otherwise redirect to `/login`.",
-      "reqIds": [
-        "REQ-48"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-47",
-      "summary": "Update the Logout button on the Profile screen (`/profile`) to call the `logout` method from the `useInternetIdentity` hook instead of simply clearing localStorage. After logout, redirect to `/login`.",
-      "reqIds": [
-        "REQ-49"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-48",
-      "summary": "Update the Layout component (`frontend/src/components/Layout.tsx`) to use the `useInternetIdentity` hook to detect authentication instead of reading from localStorage. Unauthenticated users accessing protected routes should be redirected to `/login`.",
-      "reqIds": [
-        "REQ-50"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-50",
-      "summary": "Update all frontend query hooks in `frontend/src/hooks/useQueries.ts` that currently look up the current user by phone number from localStorage to instead use the Internet Identity principal obtained from the `useActor` / `useInternetIdentity` hooks as the user identifier for backend calls.",
-      "reqIds": [
-        "REQ-52"
       ],
       "status": "pending"
     }

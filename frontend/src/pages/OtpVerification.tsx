@@ -1,17 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate, useRouterState } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, RefreshCw, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useInternetIdentity } from '../hooks/useInternetIdentity';
-import { useGetCallerUserProfile } from '../hooks/useQueries';
-import { useQueryClient } from '@tanstack/react-query';
+import { useActor } from '../hooks/useActor';
 
 export default function OtpVerification() {
   const navigate = useNavigate();
-  const routerState = useRouterState();
-  const phone = (routerState.location.state as any)?.phone || '';
-  const { login, loginStatus, identity } = useInternetIdentity();
-  const queryClient = useQueryClient();
+  const { actor } = useActor();
+
+  const phone = sessionStorage.getItem('otp_phone') || '';
 
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [timer, setTimer] = useState(60);
@@ -20,26 +17,12 @@ export default function OtpVerification() {
   const [error, setError] = useState('');
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const { data: userProfile, isFetched: profileFetched } = useGetCallerUserProfile();
-
   // Countdown timer
   useEffect(() => {
     if (timer <= 0) { setCanResend(true); return; }
     const interval = setInterval(() => setTimer(t => t - 1), 1000);
     return () => clearInterval(interval);
   }, [timer]);
-
-  // After login, check profile
-  useEffect(() => {
-    if (identity && profileFetched && verifying) {
-      setVerifying(false);
-      if (userProfile === null) {
-        navigate({ to: '/profile-setup', state: { phone } as any });
-      } else {
-        navigate({ to: '/home' });
-      }
-    }
-  }, [identity, profileFetched, userProfile, verifying, navigate, phone]);
 
   const handleOtpChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
@@ -72,10 +55,39 @@ export default function OtpVerification() {
       setError('Please enter all 6 digits');
       return;
     }
+
     setVerifying(true);
     setError('');
-    // Trigger Internet Identity login
-    login();
+
+    try {
+      // Save auth session to localStorage
+      const session = {
+        phone,
+        timestamp: Date.now(),
+        verified: true,
+      };
+      localStorage.setItem('auth_session', JSON.stringify(session));
+
+      // Check if user has a profile
+      let hasProfile = false;
+      if (actor) {
+        try {
+          const profile = await actor.getCallerUserProfile();
+          hasProfile = profile !== null;
+        } catch {
+          hasProfile = false;
+        }
+      }
+
+      if (hasProfile) {
+        navigate({ to: '/home' });
+      } else {
+        navigate({ to: '/profile-setup' });
+      }
+    } catch {
+      setError('Verification failed. Please try again.');
+      setVerifying(false);
+    }
   };
 
   const handleResend = () => {
@@ -85,7 +97,6 @@ export default function OtpVerification() {
     inputRefs.current[0]?.focus();
   };
 
-  const isLoggingIn = loginStatus === 'logging-in';
   const otpComplete = otp.every(d => d !== '');
 
   return (
@@ -168,11 +179,11 @@ export default function OtpVerification() {
         {/* Verify Button */}
         <Button
           onClick={handleVerify}
-          disabled={!otpComplete || isLoggingIn || verifying}
+          disabled={!otpComplete || verifying}
           className="w-full min-h-[52px] text-base font-semibold rounded-xl"
           style={{ background: 'oklch(0.527 0.154 150)' }}
         >
-          {isLoggingIn || verifying ? (
+          {verifying ? (
             <span className="flex items-center gap-2">
               <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               Verifying...

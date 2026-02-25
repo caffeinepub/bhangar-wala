@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bhangar-wala-v2';
+const CACHE_NAME = 'bhangar-wala-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -45,10 +45,29 @@ self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (request.method !== 'GET') return;
 
+  // ── CRITICAL: Always bypass Internet Identity authentication domains ──
+  // These must never be intercepted or cached by the service worker.
+  // Blocking them causes "unable to connect" on mobile browsers.
+  if (
+    url.hostname === 'identity.ic0.app' ||
+    url.hostname === 'identity.internetcomputer.org' ||
+    url.hostname.endsWith('.identity.ic0.app') ||
+    url.hostname.endsWith('.identity.internetcomputer.org')
+  ) {
+    return; // Let the browser handle it natively
+  }
+
+  // ── CRITICAL: Always bypass ICP canister API calls (/api/v2/) ──
+  // These are state-changing or query calls to the IC network.
+  // Caching them causes stale responses and connection failures on mobile.
+  if (url.pathname.includes('/api/v2/')) {
+    return; // Let the browser handle it natively
+  }
+
   // Skip cross-origin requests that aren't assets
   if (url.origin !== self.location.origin && !url.pathname.startsWith('/assets')) return;
 
-  // Network-first for API/canister calls
+  // Network-first for API/canister calls (other IC-related hostnames)
   if (
     url.pathname.includes('/api/') ||
     url.hostname.includes('icp') ||

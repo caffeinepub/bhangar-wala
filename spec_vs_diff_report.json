@@ -1,49 +1,44 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-25T06:30:16.193Z",
-  "summary": "The diff implements most of the Internet Identity authentication switch requirements. REQ-47 and REQ-51 appear well-implemented. However, several key files (Splash, Layout, Profile, useQueries) are not present in the modified files list, leaving REQ-48, REQ-49, REQ-50, and REQ-52 unconfirmed or missing.",
+  "generatedAt": "2026-02-25T07:33:32.287Z",
+  "summary": "The diff implements all five requirements. REQ-57 (Login screen with phone OTP flow) is restored in Login.tsx with country code selector defaulting to +91, Send OTP button, terms & conditions checkbox, and no II-related UI. REQ-58 (OTP Verification page) is restored in OtpVerification.tsx with 6 digit inputs, 60-second timer, Resend OTP button, Verify button, localStorage session storage, and navigation logic. REQ-59 (Profile Setup) reads phone from localStorage auth_session and requires the phone field. REQ-60 (Splash) uses localStorage session detection. REQ-61 (Profile logout) clears localStorage without II logout. However, the helper hint text in OtpVerification.tsx does not exactly match the required text, and phone is stored in sessionStorage rather than component state in Login.tsx.",
   "missing_requirements": [
     {
-      "id": "REQ-48",
-      "requirement": "Update the Splash screen to determine authentication state using the useInternetIdentity hook instead of localStorage.",
-      "reason": "No changes to frontend/src/pages/Splash.tsx are visible in the diff. The file does not appear in the modified files list and the file summaries do not mention it being updated.",
+      "id": "REQ-57",
+      "requirement": "Store the phone number in component state on submission",
+      "reason": "Login.tsx stores the phone in sessionStorage.setItem('otp_phone', fullPhone) rather than component state as specified by the requirement. The state variable phoneNumber holds the input but the requirement says to store the phone number in component state after submission for use by the OTP page.",
       "evidence": [
-        "frontend-file-summaries.txt"
+        "frontend/src/pages/Login.tsx"
       ]
     },
     {
-      "id": "REQ-49",
-      "requirement": "Update the Logout button on the Profile screen to call the logout method from useInternetIdentity hook instead of clearing localStorage.",
-      "reason": "frontend/src/pages/Profile.tsx does not appear in the modified files list. The existing file summary mentions logout functionality but does not confirm it was updated to use the Internet Identity logout method.",
+      "id": "REQ-58",
+      "requirement": "The helper hint 'Enter any 6-digit code to verify' is visible below the input boxes",
+      "reason": "OtpVerification.tsx shows 'Enter the 6-digit code sent to your phone number' rather than the exact required hint text 'Enter any 6-digit code to verify' which is specified in both the requirement and the acceptance criteria.",
       "evidence": [
-        "frontend-file-summaries.txt"
-      ]
-    },
-    {
-      "id": "REQ-50",
-      "requirement": "Update the Layout component to use the useInternetIdentity hook to detect authentication instead of reading from localStorage.",
-      "reason": "frontend/src/components/Layout.tsx does not appear in the modified files list. No evidence of this change is present in the diff.",
-      "evidence": [
-        "frontend/src/App.tsx"
-      ]
-    },
-    {
-      "id": "REQ-52",
-      "requirement": "Update all frontend query hooks in useQueries.ts to use the Internet Identity principal instead of localStorage phone number for backend calls.",
-      "reason": "frontend/src/hooks/useQueries.ts does not appear in the modified files list. No evidence of this change is present in the diff.",
-      "evidence": [
-        "frontend-file-summaries.txt"
+        "frontend/src/pages/OtpVerification.tsx"
       ]
     }
   ],
-  "hallucinated_features": [],
-  "confidence": 0.65,
+  "hallucinated_features": [
+    {
+      "description": "sessionStorage is also cleared on logout via sessionStorage.removeItem('otp_phone') in the Profile page logout handler",
+      "reason": "REQ-61 only specifies clearing the localStorage auth session and redirecting to /login. Clearing sessionStorage was not part of the requested logout behavior.",
+      "evidence": [
+        "frontend/src/pages/Profile.tsx"
+      ]
+    }
+  ],
+  "confidence": 0.82,
   "changed_files": [
     "frontend-file-summaries.txt",
     "frontend/src/App.tsx",
     "frontend/src/pages/Login.tsx",
+    "frontend/src/pages/OtpVerification.tsx",
+    "frontend/src/pages/Profile.tsx",
     "frontend/src/pages/ProfileSetup.tsx",
+    "frontend/src/pages/Splash.tsx",
     "project_state.json"
   ]
 }

@@ -2,10 +2,9 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-replace-the-simulated-phone-otp-login-flow-with-internet-identity-authentication-update-the-login-screen-login-to-display-a-single-sign-in-button-replacing-the-phone-number-input-country-code-selector-otp-fields-and-terms-checkbox-tapping-sign-in-triggers-the-internet-identity-login-popup-using-the-useinternetidentity-hook-already-available-at-frontend-src-hooks-useinternetidentity-ts-after-successful-login-check-whether-a-user-profile-exists-in-the-backend-if-no-profile-exists-navigate-to-profile-setup-if-a-profile-exists-navigate-to-home-remove-the-otp-verification-route-and-page",
-      "featureTitle": "Replace the simulated phone OTP login flow with Internet Identity authentication. Update the Login screen (`/login`) to display a single 'Sign In' button (replacing the phone number input, country code selector, OTP fields, and terms checkbox). Tapping 'Sign In' triggers the Internet Identity login popup using the `useInternetIdentity` hook already available at `frontend/src/hooks/useInternetIdentity.ts`. After successful login, check whether a user profile exists in the backend: if no profile exists, navigate to `/profile-setup`; if a profile exists, navigate to `/home`. Remove the `/otp-verification` route and page.",
+      "featureId": "feature-restore-the-login-screen-login-to-the-original-phone-otp-flow-display-a-phone-number-input-field-a-country-code-selector-defaulting-to-91-a-send-otp-button-and-a-terms-conditions-checkbox-on-submitting-a-valid-phone-number-navigate-to-otp-verification-and-store-the-phone-number-in-component-state-remove-the-internet-identity-sign-in-button-and-any-ii-related-error-retry-ui-from-this-screen",
+      "featureTitle": "Restore the Login screen (`/login`) to the original phone OTP flow: display a phone number input field, a country code selector defaulting to +91, a 'Send OTP' button, and a terms & conditions checkbox. On submitting a valid phone number, navigate to `/otp-verification` and store the phone number in component state. Remove the Internet Identity 'Sign In' button and any II-related error/retry UI from this screen.",
       "files": [
-        "frontend/src/App.tsx",
         "frontend/src/pages/Login.tsx"
       ],
       "components": [
@@ -18,13 +17,34 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-47"
+        "REQ-57"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-update-the-profile-setup-screen-profile-setup-to-derive-the-user-identifier-from-the-internet-identity-principal-via-useinternetidentity-rather-than-from-a-phone-number-stored-in-localstorage-use-the-principal-text-as-the-user-id-when-calling-the-backend-createuserprofile-method-since-phone-number-is-no-longer-collected-during-login-make-the-phone-field-on-the-profile-setup-form-optional",
-      "featureTitle": "Update the Profile Setup screen (`/profile-setup`) to derive the user identifier from the Internet Identity principal (via `useInternetIdentity`) rather than from a phone number stored in localStorage. Use the principal text as the user ID when calling the backend `createUserProfile` method. Since phone number is no longer collected during login, make the phone field on the profile setup form optional.",
+      "featureId": "feature-restore-the-otp-verification-route-and-the-otp-verification-page-the-page-must-render-6-individual-digit-input-boxes-a-60-second-countdown-timer-a-resend-otp-button-enabled-only-after-the-timer-expires-and-a-verify-button-on-successful-verification-accept-any-6-digit-code-navigate-first-time-users-to-profile-setup-and-returning-users-to-home-store-the-auth-session-in-localstorage-include-the-helper-hint-enter-any-6-digit-code-to-verify-below-the-digit-input-boxes",
+      "featureTitle": "Restore the `/otp-verification` route and the OTP Verification page. The page must render 6 individual digit input boxes, a 60-second countdown timer, a 'Resend OTP' button (enabled only after the timer expires), and a 'Verify' button. On successful verification (accept any 6-digit code), navigate first-time users to `/profile-setup` and returning users to `/home`. Store the auth session in localStorage. Include the helper hint 'Enter any 6-digit code to verify' below the digit input boxes.",
+      "files": [
+        "frontend/src/App.tsx",
+        "frontend/src/pages/OtpVerification.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-58"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-restore-the-profile-setup-screen-profile-setup-to-use-the-phone-number-stored-in-localstorage-set-during-otp-login-as-the-user-identifier-when-calling-the-backend-createuserprofile-method-make-the-phone-field-on-the-profile-setup-form-required-not-optional-consistent-with-the-phone-otp-based-auth-flow",
+      "featureTitle": "Restore the Profile Setup screen (`/profile-setup`) to use the phone number stored in localStorage (set during OTP login) as the user identifier when calling the backend `createUserProfile` method. Make the phone field on the profile setup form required (not optional), consistent with the phone-OTP-based auth flow.",
       "files": [
         "frontend/src/pages/ProfileSetup.tsx"
       ],
@@ -38,7 +58,47 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-51"
+        "REQ-59"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-restore-the-splash-screen-splash-redirect-logic-to-use-localstorage-session-detection-not-internet-identity-initialization-state-to-determine-whether-to-redirect-to-home-authenticated-or-login-unauthenticated",
+      "featureTitle": "Restore the Splash screen (`/splash`) redirect logic to use localStorage session detection (not Internet Identity initialization state) to determine whether to redirect to `/home` (authenticated) or `/login` (unauthenticated).",
+      "files": [
+        "frontend/src/pages/Splash.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-60"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-restore-the-profile-screen-profile-logout-action-to-clear-the-localstorage-auth-session-and-redirect-to-login-without-calling-any-internet-identity-logout-method",
+      "featureTitle": "Restore the Profile screen (`/profile`) logout action to clear the localStorage auth session and redirect to `/login`, without calling any Internet Identity logout method.",
+      "files": [
+        "frontend/src/pages/Profile.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-61"
       ],
       "confidence": "high"
     }

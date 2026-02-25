@@ -5,15 +5,26 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useSaveCallerUserProfile, useAddAddress } from '../hooks/useQueries';
-import { useInternetIdentity } from '../hooks/useInternetIdentity';
+import { useActor } from '../hooks/useActor';
 import { ExternalBlob } from '../utils/blobStorage';
 
 export default function ProfileSetup() {
   const navigate = useNavigate();
-  const { identity } = useInternetIdentity();
+  const { actor } = useActor();
+
+  // Read phone from localStorage auth session set during OTP verification
+  const authSession = (() => {
+    try {
+      const raw = localStorage.getItem('auth_session');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  })();
+  const sessionPhone = authSession?.phone || '';
 
   const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState(sessionPhone);
   const [profileImageUrl, setProfileImageUrl] = useState('');
   const [imagePreview, setImagePreview] = useState('');
   const [street, setStreet] = useState('');
@@ -48,32 +59,43 @@ export default function ProfileSetup() {
   };
 
   const handleSave = async () => {
-    if (!name.trim() || !identity) return;
+    if (!name.trim() || !phone.trim() || !actor) return;
 
-    const principal = identity.getPrincipal();
-    await saveProfile.mutateAsync({
-      id: principal,
-      name: name.trim(),
-      phone: phone.trim(),
-      profileImage: profileImageUrl,
-    });
+    // Use the actor's caller principal as the user ID
+    // The phone number from the OTP session is used as the user's phone identifier
+    try {
+      // We need a principal — use a placeholder derived from the phone for the id field
+      // The backend uses the caller principal automatically via saveCallerUserProfile
+      const { Principal } = await import('@dfinity/principal');
+      // Use anonymous principal as placeholder; backend uses caller identity
+      const principal = Principal.anonymous();
 
-    if (street.trim() && city.trim() && pincode.trim()) {
-      await addAddress.mutateAsync({
-        addressLabel: 'Home',
-        street: street.trim(),
-        city: city.trim(),
-        pincode: pincode.trim(),
-        lat: null,
-        lng: null,
+      await saveProfile.mutateAsync({
+        id: principal,
+        name: name.trim(),
+        phone: phone.trim(),
+        profileImage: profileImageUrl,
       });
-    }
 
-    navigate({ to: '/home' });
+      if (street.trim() && city.trim() && pincode.trim()) {
+        await addAddress.mutateAsync({
+          addressLabel: 'Home',
+          street: street.trim(),
+          city: city.trim(),
+          pincode: pincode.trim(),
+          lat: null,
+          lng: null,
+        });
+      }
+
+      navigate({ to: '/home' });
+    } catch {
+      // error shown via saveProfile.isError
+    }
   };
 
   const isLoading = saveProfile.isPending || addAddress.isPending || uploading;
-  const canSave = name.trim().length > 0 && !isLoading;
+  const canSave = name.trim().length > 0 && phone.trim().length > 0 && !isLoading;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -122,12 +144,11 @@ export default function ProfileSetup() {
           />
         </div>
 
-        {/* Phone (optional) */}
+        {/* Phone (required, pre-filled from session) */}
         <div className="space-y-2">
           <Label className="flex items-center gap-1">
             <Phone className="w-3.5 h-3.5" />
-            Phone Number
-            <span className="text-muted-foreground font-normal text-xs ml-1">(Optional)</span>
+            Phone Number *
           </Label>
           <Input
             type="tel"
